@@ -55,7 +55,6 @@ button {
   top: 0;
   left: 0;
   transform-origin: 0 0;
-  will-change: transform;
 }
 
 .canvas-grabbing {
@@ -427,20 +426,33 @@ button {
   word-break: break-word;
 }
 
-/* 접힘 표시: 오른쪽 아래 모서리에 회색 dog-ear 세모 (스크롤해도 모서리 고정) */
+/* 포스트잇 배경: 오른쪽 아래 모서리를 잘라 접힌 듯 (그 부분은 배경 안 보임) */
+.postit-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+
+/* 접힘 표시: 오른쪽 아래 모서리의 작은 회색 세모(접힌 부분) */
 .fold-btn {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 0 0 16px 16px;
-  border-color: transparent transparent #9ca3af transparent;
+  width: 14px;
+  height: 14px;
+  background: #9ca3af;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
   cursor: pointer;
-  z-index: 3;
+  z-index: 6;
 }
-.fold-btn:hover { border-bottom-color: #6b7280; }
+.fold-btn:hover { background: #6b7280; }
+
+/* 스크롤바가 접힘 세모 아래까지 내려가지 않도록 본문 아래 여백 확보 */
+.widget--text .widget-body,
+.widget--postit .widget-body {
+  border-bottom: 16px solid transparent;
+}
 
 .w-collapsed {
   display: flex;

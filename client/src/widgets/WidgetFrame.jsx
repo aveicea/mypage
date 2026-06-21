@@ -184,6 +184,8 @@ export default function WidgetFrame({
   const isPostit = widget.type === 'postit';
   const isDraw = widget.type === 'draw';
   const isViewbtn = widget.type === 'viewbtn';
+  const isText = widget.type === 'text';
+  const collapsed = !!widget.content?.collapsed;
 
   return (
     <div
@@ -195,17 +197,34 @@ export default function WidgetFrame({
         // 뷰 버튼은 내용(글씨)에 맞게 자동 크기
         ...(isViewbtn ? {} : { width: widget.width, height: widget.height }),
         zIndex: widget.zIndex,
-        ...(isPostit ? { background: widget.content?.color || POSTIT_COLORS[0] } : {}),
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
     >
+      {isPostit && (
+        <div
+          className="postit-bg"
+          style={{ background: widget.content?.color || POSTIT_COLORS[0] }}
+        />
+      )}
       <div className="widget-body">
         <WidgetChromeContext.Provider value={{ host: extHost, selected, editMode: act }}>
           {children}
         </WidgetChromeContext.Provider>
       </div>
+
+      {(isText || isPostit) && (
+        <div
+          className={`fold-btn ${collapsed ? 'on' : ''}`}
+          title={collapsed ? '펼치기' : '접기'}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChange({ content: { ...widget.content, collapsed: !collapsed } }, { commit: true });
+          }}
+        />
+      )}
 
       <div className="widget-ext">
         {act && selected && (
