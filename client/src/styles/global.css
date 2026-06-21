@@ -426,20 +426,25 @@ button {
   word-break: break-word;
 }
 
-/* 접힘 표시: 오른쪽 아래 모서리에 회색 dog-ear 세모 (스크롤해도 모서리 고정) */
+/* 접힘 표시: 오른쪽 아래 모서리의 회색 세모(접힌 부분), 나머지(모서리)는 투명 */
 .fold-btn {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 0 0 16px 16px;
-  border-color: transparent transparent #9ca3af transparent;
+  width: 24px;
+  height: 24px;
+  background: #9ca3af;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
   cursor: pointer;
-  z-index: 3;
+  z-index: 6;
 }
-.fold-btn:hover { border-bottom-color: #6b7280; }
+.fold-btn:hover { background: #6b7280; }
+
+/* 스크롤바가 접힘 세모 아래까지 내려가지 않도록 본문 아래 여백 확보 */
+.widget--text .widget-body,
+.widget--postit .widget-body {
+  border-bottom: 22px solid transparent;
+}
 
 .w-collapsed {
   display: flex;

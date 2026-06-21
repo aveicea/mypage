@@ -259,34 +259,18 @@ export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, o
   const lines = text.split('\n');
   const collapsed = !!widget.content?.collapsed;
 
-  const fold = (
-    <div
-      className={`fold-btn ${collapsed ? 'on' : ''}`}
-      title={collapsed ? '펼치기' : '접기'}
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.stopPropagation();
-        onChange({ content: { ...widget.content, collapsed: !collapsed } }, { commit: true });
-      }}
-    />
-  );
-
   if (collapsed) {
     const first = lines.find((l) => l.trim() !== '') || '';
     const clean = first.replace(/^(\s*[-*]?\s*)\[([ xX]?)\]\s?/, '').replace(/^#{1,3}\s+/, '');
     return (
-      <>
-        <div className="w-text w-collapsed" onDoubleClick={startEditing}>
-          <div className="w-collapsed-line" dangerouslySetInnerHTML={{ __html: inlineMd(clean) || '&nbsp;' }} />
-        </div>
-        {fold}
-      </>
+      <div className="w-text w-collapsed" onDoubleClick={startEditing}>
+        <div className="w-collapsed-line" dangerouslySetInnerHTML={{ __html: inlineMd(clean) || '&nbsp;' }} />
+      </div>
     );
   }
 
   return (
-    <>
-      <div className="w-text" onDoubleClick={startEditing}>
+    <div className="w-text" onDoubleClick={startEditing}>
         {lines.map((line, idx) => {
         const task = line.match(TASK_RE);
         if (task) {
@@ -314,8 +298,6 @@ export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, o
         if (line.trim() === '') return <div key={idx} className="w-blank" />;
         return <div key={idx} dangerouslySetInnerHTML={{ __html: inlineMd(line) }} />;
         })}
-      </div>
-      {fold}
-    </>
+    </div>
   );
 }

@@ -184,6 +184,8 @@ export default function WidgetFrame({
   const isPostit = widget.type === 'postit';
   const isDraw = widget.type === 'draw';
   const isViewbtn = widget.type === 'viewbtn';
+  const isText = widget.type === 'text';
+  const collapsed = !!widget.content?.collapsed;
 
   return (
     <div
@@ -206,6 +208,18 @@ export default function WidgetFrame({
           {children}
         </WidgetChromeContext.Provider>
       </div>
+
+      {(isText || isPostit) && (
+        <div
+          className={`fold-btn ${collapsed ? 'on' : ''}`}
+          title={collapsed ? '펼치기' : '접기'}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChange({ content: { ...widget.content, collapsed: !collapsed } }, { commit: true });
+          }}
+        />
+      )}
 
       <div className="widget-ext">
         {act && selected && (
