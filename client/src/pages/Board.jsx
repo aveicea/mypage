@@ -71,8 +71,9 @@ export default function Board() {
     viewport.fitTo(homeRef.current);
   }, [viewport]);
 
-  // 패닝 가능 조건: 편집 모드이거나, 보기 모드에서 잠금 해제일 때
+  // 패닝: 편집 모드이거나 잠금 해제 보기. 확대: 편집 + 잠금 해제일 때만.
   const panEnabled = editMode || !locked;
+  const zoomEnabled = editMode && !locked;
   const maxZ = widgets.reduce((m, w) => Math.max(m, w.zIndex || 1), 1);
 
   // 단축키
@@ -140,6 +141,7 @@ export default function Board() {
         viewport={viewport}
         editMode={editMode}
         panEnabled={panEnabled}
+        zoomEnabled={zoomEnabled}
         homeRect={homeRect}
         onHomeChange={setHomeRect}
         onHomeCommit={() => saveHomeRect(config.databaseId, homeRef.current)}
@@ -197,8 +199,8 @@ export default function Board() {
         </div>
       )}
 
-      {/* 우하단: 줌 컨트롤 (편집 모드에서만) */}
-      {editMode && (
+      {/* 우하단: 줌 컨트롤 (편집 + 잠금 해제일 때만) */}
+      {zoomEnabled && (
         <div className="zoom-controls">
           <button className="icon-btn" title="축소" onClick={() => viewport.zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.1)}>
             <MinusIcon />
@@ -243,9 +245,11 @@ export default function Board() {
           >
             {locked ? <LockClosedIcon /> : <LockOpenIcon />}
           </button>
-          <button className="icon-btn" title="처음 화면으로" onClick={() => viewport.fitTo(homeRect)}>
-            <ResetIcon />
-          </button>
+          {!editMode && !locked && (
+            <button className="icon-btn" title="처음 화면으로" onClick={() => viewport.fitTo(homeRect)}>
+              <ResetIcon />
+            </button>
+          )}
         </div>
       </div>
 

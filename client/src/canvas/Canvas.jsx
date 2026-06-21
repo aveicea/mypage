@@ -9,6 +9,7 @@ export default function Canvas({
   viewport,
   editMode,
   panEnabled,
+  zoomEnabled,
   homeRect,
   onHomeChange,
   onHomeCommit,
@@ -35,8 +36,8 @@ export default function Canvas({
       if (body && !e.ctrlKey && body.scrollHeight - body.clientHeight > 1) return;
 
       if (e.ctrlKey) {
-        // 핀치(트랙패드)/Ctrl+휠 = 확대/축소 (편집 모드에서만)
-        if (editMode) {
+        // 핀치(트랙패드)/Ctrl+휠 = 확대/축소 (편집 + 잠금 해제일 때만)
+        if (zoomEnabled) {
           e.preventDefault();
           const rect = el.getBoundingClientRect();
           const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
@@ -54,7 +55,7 @@ export default function Canvas({
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [zoomAt, panBy, editMode, panEnabled]);
+  }, [zoomAt, panBy, editMode, panEnabled, zoomEnabled]);
 
   function dist(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
@@ -77,7 +78,7 @@ export default function Canvas({
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    if (pointers.current.size === 2 && editMode) {
+    if (pointers.current.size === 2 && zoomEnabled) {
       // 두 손가락 → 핀치 줌 (편집 모드에서만), 패닝 중단
       panning.current = null;
       const [a, b] = [...pointers.current.values()];

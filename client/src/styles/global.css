@@ -88,10 +88,6 @@ button {
   overflow: hidden;
 }
 
-/* 그림 위젯은 흰 도화지 배경 */
-.widget--draw {
-  background: #fff;
-}
 
 .widget.selected {
   outline: 2px solid var(--accent);
@@ -591,11 +587,13 @@ button {
 .draw-tools {
   position: absolute;
   top: 6px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 6px;
+  right: 6px;
   display: flex;
+  flex-wrap: wrap;
   gap: 3px;
   align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -603,6 +601,14 @@ button {
   box-shadow: var(--shadow);
   z-index: 2;
 }
+.draw-sep { width: 1px; height: 16px; background: var(--border); margin: 0 3px; }
+.draw-label { font-size: 11px; color: #666; }
+.draw-opacity { display: inline-flex; align-items: center; gap: 1px; font-size: 11px; color: #555; }
+.draw-opacity button {
+  border: none; background: transparent; cursor: pointer; border-radius: 4px; padding: 1px 5px; font-size: 12px;
+}
+.draw-opacity button:hover { background: #eef0f3; }
+.draw-opacity span { min-width: 34px; text-align: center; }
 .draw-swatch {
   width: 16px;
   height: 16px;

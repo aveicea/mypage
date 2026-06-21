@@ -1,17 +1,32 @@
 import { useRef, useState } from 'react';
 
 const PEN_COLORS = ['#111827', '#e11d48', '#2563eb', '#16a34a', '#f59e0b', '#ffffff'];
+const BG_COLORS = ['#ffffff', '#fff7c2', '#d6f5d6', '#cfe8ff', '#111827'];
+
+function hexToRgba(hex, a) {
+  const m = hex.replace('#', '');
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
 
 /**
- * 자유롭게 그리는 그림 위젯. 포인터(마우스/터치/애플펜슬)로 획을 그린다.
- * 좌표는 0~1 로 정규화해 저장 → 위젯 크기를 바꿔도 그림이 같이 스케일된다.
+ * 자유롭게 그리는 그림 위젯. 펜/지우개, 배경색+투명도 지원.
+ * 좌표는 0~1 정규화 저장 → 위젯 크기 바꿔도 그림이 같이 스케일.
  */
 export default function DrawWidget({ widget, editMode, onChange }) {
-  const strokes = widget.content?.strokes || [];
+  const content = widget.content || {};
+  const strokes = content.strokes || [];
+  const bg = content.bg ?? '#ffffff';
+  const bgOpacity = content.bgOpacity ?? 1;
+
   const svgRef = useRef(null);
-  const [cur, setCur] = useState(null); // 그리는 중인 획
+  const eraseRef = useRef(null); // 지우개 작업 중 작업본
+  const [cur, setCur] = useState(null);
   const [color, setColor] = useState(PEN_COLORS[0]);
   const [width, setWidth] = useState(2);
+  const [tool, setTool] = useState('pen'); // 'pen' | 'eraser'
 
   function pt(e) {
     const r = svgRef.current.getBoundingClientRect();
@@ -21,57 +36,101 @@ export default function DrawWidget({ widget, editMode, onChange }) {
     ];
   }
 
+  function eraseAt(p) {
+    const thr = 0.03;
+    const remaining = eraseRef.current.filter(
+      (s) => !s.points.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < thr)
+    );
+    if (remaining.length !== eraseRef.current.length) {
+      eraseRef.current = remaining;
+      onChange({ content: { ...content, strokes: remaining } });
+    }
+  }
+
   function onDown(e) {
     e.stopPropagation();
     svgRef.current.setPointerCapture(e.pointerId);
-    setCur({ color, width, points: [pt(e)] });
+    if (tool === 'eraser') {
+      eraseRef.current = [...strokes];
+      eraseAt(pt(e));
+    } else {
+      setCur({ color, width, points: [pt(e)] });
+    }
   }
   function onMove(e) {
-    if (!cur) return;
     e.stopPropagation();
-    setCur((c) => ({ ...c, points: [...c.points, pt(e)] }));
+    if (tool === 'eraser') {
+      if (eraseRef.current) eraseAt(pt(e));
+    } else if (cur) {
+      setCur((c) => ({ ...c, points: [...c.points, pt(e)] }));
+    }
   }
   function onUp(e) {
-    if (!cur) return;
     e.stopPropagation();
-    const next = cur.points.length > 1 ? [...strokes, cur] : strokes;
-    setCur(null);
-    if (next !== strokes) onChange({ content: { ...widget.content, strokes: next } }, { commit: true });
+    if (tool === 'eraser') {
+      if (eraseRef.current) onChange({ content: { ...content, strokes: eraseRef.current } }, { commit: true });
+      eraseRef.current = null;
+    } else if (cur) {
+      const next = cur.points.length > 1 ? [...strokes, cur] : strokes;
+      setCur(null);
+      if (next !== strokes) onChange({ content: { ...content, strokes: next } }, { commit: true });
+    }
   }
 
-  function toPoints(s) {
-    return s.points.map((p) => `${p[0]},${p[1]}`).join(' ');
-  }
+  const toPoints = (s) => s.points.map((p) => `${p[0]},${p[1]}`).join(' ');
+  const undo = () => onChange({ content: { ...content, strokes: strokes.slice(0, -1) } }, { commit: true });
+  const clear = () => onChange({ content: { ...content, strokes: [] } }, { commit: true });
+  const setBg = (c) => onChange({ content: { ...content, bg: c } }, { commit: true });
+  const setOpacity = (o) =>
+    onChange({ content: { ...content, bgOpacity: Math.min(1, Math.max(0, Math.round(o * 100) / 100)) } }, { commit: true });
 
-  function undo() {
-    onChange({ content: { ...widget.content, strokes: strokes.slice(0, -1) } }, { commit: true });
-  }
-  function clear() {
-    onChange({ content: { ...widget.content, strokes: [] } }, { commit: true });
-  }
+  const background = bg === 'transparent' ? 'transparent' : hexToRgba(bg, bgOpacity);
 
   return (
-    <div className="w-draw">
+    <div className="w-draw" style={{ background }}>
       {editMode && (
         <div className="draw-tools" onPointerDown={(e) => e.stopPropagation()}>
           {PEN_COLORS.map((c) => (
             <button
               key={c}
-              className={`draw-swatch ${color === c ? 'on' : ''}`}
+              className={`draw-swatch ${tool === 'pen' && color === c ? 'on' : ''}`}
               style={{ background: c }}
-              onClick={() => setColor(c)}
+              onClick={() => { setColor(c); setTool('pen'); }}
             />
           ))}
-          <button className="draw-w" title="얇게" onClick={() => setWidth(2)}>·</button>
-          <button className="draw-w" title="굵게" onClick={() => setWidth(5)}>●</button>
+          <button className={`draw-w ${tool === 'pen' && width === 2 ? 'on' : ''}`} title="얇게" onClick={() => { setWidth(2); setTool('pen'); }}>·</button>
+          <button className={`draw-w ${tool === 'pen' && width === 5 ? 'on' : ''}`} title="굵게" onClick={() => { setWidth(5); setTool('pen'); }}>●</button>
+          <button className={`draw-w ${tool === 'eraser' ? 'on' : ''}`} title="지우개" onClick={() => setTool('eraser')}>⌫</button>
           <button className="draw-w" title="한 획 취소" onClick={undo}>↺</button>
           <button className="draw-w" title="전체 지우기" onClick={clear}>🗑</button>
+          <span className="draw-sep" />
+          <span className="draw-label">배경</span>
+          {BG_COLORS.map((c) => (
+            <button key={c} className={`draw-swatch ${bg === c ? 'on' : ''}`} style={{ background: c }} onClick={() => setBg(c)} />
+          ))}
+          <button className={`draw-w ${bg === 'transparent' ? 'on' : ''}`} title="투명 배경" onClick={() => setBg('transparent')}>▢</button>
+          {bg !== 'transparent' && (
+            <span className="draw-opacity">
+              <button onClick={() => setOpacity(bgOpacity - 0.1)}>−</button>
+              <span
+                title="더블클릭하여 입력"
+                onDoubleClick={() => {
+                  const v = window.prompt('배경 투명도 % 입력', String(Math.round(bgOpacity * 100)));
+                  if (v != null && !Number.isNaN(parseFloat(v))) setOpacity(parseFloat(v) / 100);
+                }}
+              >
+                {Math.round(bgOpacity * 100)}%
+              </span>
+              <button onClick={() => setOpacity(bgOpacity + 0.1)}>＋</button>
+            </span>
+          )}
         </div>
       )}
       <svg
         ref={svgRef}
         viewBox="0 0 1 1"
         preserveAspectRatio="none"
+        style={{ cursor: tool === 'eraser' ? 'cell' : 'crosshair' }}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
