@@ -15,7 +15,7 @@ function hexToRgba(hex, a) {
  * 자유롭게 그리는 그림 위젯. 펜/지우개, 배경색+투명도 지원.
  * 좌표는 0~1 정규화 저장 → 위젯 크기 바꿔도 그림이 같이 스케일.
  */
-export default function DrawWidget({ widget, editMode, onChange }) {
+export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }) {
   const content = widget.content || {};
   const strokes = content.strokes || [];
   const bg = content.bg ?? '#ffffff';
@@ -127,7 +127,11 @@ export default function DrawWidget({ widget, editMode, onChange }) {
   const background = bg === 'transparent' ? 'transparent' : hexToRgba(bg, bgOpacity);
 
   return (
-    <div className="w-draw" style={{ background }}>
+    <div
+      className="w-draw"
+      style={{ background }}
+      onDoubleClick={() => { if (!editMode) onRequestEdit?.(); }}
+    >
       {editMode && (
         <div className="draw-tools" onPointerDown={(e) => e.stopPropagation()}>
           <button className={`draw-w ${tool === 'none' ? 'on' : ''}`} title="선택/이동" onClick={() => setTool('none')}>↖</button>

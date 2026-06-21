@@ -122,7 +122,18 @@ export default function Board() {
   }
 
   function renderWidgetContent(w) {
-    const common = { widget: w, editMode, api, deviceId, onChange: (patch, opts) => updateWidget(w.id, patch, opts) };
+    const common = {
+      widget: w,
+      editMode,
+      api,
+      deviceId,
+      onRequestEdit: () => {
+        setEditMode(true);
+        setLocked(false);
+        setSelectedId(w.id);
+      },
+      onChange: (patch, opts) => updateWidget(w.id, patch, opts),
+    };
     switch (w.type) {
       case 'image': return <ImageWidget {...common} />;
       case 'link': return <LinkWidget {...common} />;
@@ -230,7 +241,9 @@ export default function Board() {
           className={`icon-btn ${editMode ? 'active' : ''}`}
           title={editMode ? '편집 종료' : '편집 모드'}
           onClick={() => {
-            setEditMode((v) => !v);
+            const entering = !editMode;
+            setEditMode(entering);
+            if (entering) setLocked(false); // 편집 진입 시 자물쇠 자동 해제
             setSelectedId(null);
             setMenuOpen(false);
           }}

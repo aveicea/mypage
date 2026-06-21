@@ -370,7 +370,7 @@ button {
 
 .w-collapsed {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 .w-collapsed-line {
   width: 100%;
