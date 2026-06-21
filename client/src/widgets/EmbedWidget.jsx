@@ -2,7 +2,6 @@
 function toEmbedUrl(raw) {
   try {
     const u = new URL(raw);
-    // YouTube
     if (u.hostname === 'youtu.be') {
       return `https://www.youtube.com/embed/${u.pathname.slice(1)}`;
     }
@@ -16,6 +15,9 @@ function toEmbedUrl(raw) {
     return raw;
   }
 }
+
+// 임베드 콘텐츠의 논리 너비. 위젯 너비를 이 값 기준으로 스케일 → 위젯을 키우면 콘텐츠도 확대.
+const BASE_WIDTH = 480;
 
 export default function EmbedWidget({ widget, editMode, onChange }) {
   const url = widget.content?.url || '';
@@ -33,11 +35,19 @@ export default function EmbedWidget({ widget, editMode, onChange }) {
     );
   }
 
+  const scale = Math.max(0.1, (widget.width || BASE_WIDTH) / BASE_WIDTH);
+
   return (
-    <div className="w-embed" style={{ width: '100%', height: '100%' }} onDoubleClick={() => editMode && setUrl()}>
+    <div className="w-embed" onDoubleClick={() => editMode && setUrl()}>
       <iframe
         src={toEmbedUrl(url)}
         title={widget.id}
+        style={{
+          width: BASE_WIDTH,
+          height: (widget.height || BASE_WIDTH) / scale,
+          transform: `scale(${scale})`,
+          transformOrigin: '0 0',
+        }}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
       />
