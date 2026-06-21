@@ -346,6 +346,27 @@ button {
   background: transparent;
 }
 
+.w-text h1 { font-size: 1.4em; margin: 0.2em 0; }
+.w-text h2 { font-size: 1.2em; margin: 0.2em 0; }
+.w-text h3 { font-size: 1.05em; margin: 0.2em 0; }
+.w-text .w-blank { height: 0.6em; }
+
+.w-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  cursor: pointer;
+}
+.w-task input {
+  margin-top: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.w-task-done {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
 .w-image {
   width: 100%;
   height: 100%;

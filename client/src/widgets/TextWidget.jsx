@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 
-/** 아주 단순한 마크다운 인라인 렌더링 (**굵게**, *기울임*, `코드`, [링크](url)) */
-function renderMarkdown(text) {
-  const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  let html = escape(text || '');
-  html = html
+/** 인라인 마크다운 (**굵게**, *기울임*, `코드`, [링크](url)) */
+function inlineMd(s) {
+  const esc = String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return esc
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
-    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.*)$/gm, '<h1>$1</h1>')
-    .replace(/\n/g, '<br/>');
-  return html;
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
 }
+
+// 체크박스 라인: 선택적 -/* 글머리 + [], [ ], [x]
+const TASK_RE = /^(\s*[-*]?\s*)\[([ xX]?)\]\s?(.*)$/;
 
 export default function TextWidget({ widget, editMode, onChange }) {
   const text = widget.content?.text ?? '';
@@ -26,7 +26,6 @@ export default function TextWidget({ widget, editMode, onChange }) {
     if (editing && taRef.current) taRef.current.focus();
   }, [editing]);
 
-  // 외부(노션) 동기화로 텍스트가 바뀌면 draft 갱신 (편집 중이 아닐 때만)
   useEffect(() => {
     if (!editing) setDraft(text);
   }, [text, editing]);
@@ -38,7 +37,17 @@ export default function TextWidget({ widget, editMode, onChange }) {
     }
   }
 
-  // 편집은 편집 모드에서 더블클릭 시작
+  function toggleTask(idx) {
+    const lines = text.split('\n');
+    const line = lines[idx];
+    if (line == null) return;
+    const m = line.match(/\[([ xX]?)\]/);
+    if (!m) return;
+    const checked = m[1].toLowerCase() === 'x';
+    lines[idx] = line.replace(/\[([ xX]?)\]/, checked ? '[ ]' : '[x]');
+    onChange({ content: { ...widget.content, text: lines.join('\n') } }, { commit: true });
+  }
+
   if (editing && editMode) {
     return (
       <div className="w-text">
@@ -52,13 +61,47 @@ export default function TextWidget({ widget, editMode, onChange }) {
     );
   }
 
+  if (!text) {
+    return (
+      <div className="w-text" onDoubleClick={() => editMode && setEditing(true)}>
+        <span style={{ color: '#9ca3af' }}>더블클릭하여 편집</span>
+      </div>
+    );
+  }
+
+  const lines = text.split('\n');
+
   return (
-    <div
-      className="w-text"
-      onDoubleClick={() => editMode && setEditing(true)}
-      dangerouslySetInnerHTML={{
-        __html: text ? renderMarkdown(text) : '<span style="color:#9ca3af">더블클릭하여 편집</span>',
-      }}
-    />
+    <div className="w-text" onDoubleClick={() => editMode && setEditing(true)}>
+      {lines.map((line, idx) => {
+        const task = line.match(TASK_RE);
+        if (task) {
+          const checked = task[2].toLowerCase() === 'x';
+          return (
+            <label key={idx} className="w-task">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => toggleTask(idx)}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <span
+                className={checked ? 'w-task-done' : ''}
+                dangerouslySetInnerHTML={{ __html: inlineMd(task[3]) || '&nbsp;' }}
+              />
+            </label>
+          );
+        }
+
+        const h = line.match(/^(#{1,3})\s+(.*)$/);
+        if (h) {
+          const Tag = `h${h[1].length}`;
+          return <Tag key={idx} dangerouslySetInnerHTML={{ __html: inlineMd(h[2]) }} />;
+        }
+
+        if (line.trim() === '') return <div key={idx} className="w-blank" />;
+        return <div key={idx} dangerouslySetInnerHTML={{ __html: inlineMd(line) }} />;
+      })}
+    </div>
   );
 }
