@@ -47,7 +47,15 @@ export default function EmbedWidget({ widget, editMode, onChange }) {
       {editMode && (
         <div className="embed-tools" onPointerDown={(e) => e.stopPropagation()}>
           <button onClick={() => setZoom(zoom - 0.1)}>−</button>
-          <span>{Math.round(zoom * 100)}%</span>
+          <span
+            title="더블클릭하여 직접 입력"
+            onDoubleClick={() => {
+              const v = window.prompt('확대 % 입력', String(Math.round(zoom * 100)));
+              if (v != null && !Number.isNaN(parseFloat(v))) setZoom(parseFloat(v) / 100);
+            }}
+          >
+            {Math.round(zoom * 100)}%
+          </span>
           <button onClick={() => setZoom(zoom + 0.1)}>＋</button>
           <button title="URL 변경" onClick={setUrl}>URL</button>
         </div>
