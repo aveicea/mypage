@@ -282,6 +282,15 @@ button {
   align-items: center;
 }
 
+.top-right {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  gap: 4px;
+}
+
 /* 상태 토스트 */
 .toast {
   position: fixed;
@@ -396,6 +405,28 @@ button {
   color: #333;
 }
 .fmt-bar button:hover { background: #eef0f3; }
+
+/* 인라인 줄 에디터 */
+.w-editor { padding: 8px 12px 12px; }
+.ed-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+.ed-row input[type='checkbox'] {
+  margin-top: 5px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.ed-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  padding: 1px 0;
+}
 
 /* 처음 화면에 보이는 영역 가이드 (편집 모드) */
 .home-frame {

@@ -189,27 +189,17 @@ export default function Board() {
         </div>
       )}
 
-      {/* 좌하단: (리셋) / 잠금 / 설정 / 편집 토글 */}
-      <div className="bottom-left">
-        {!editMode && !locked && (
-          <button className="icon-btn" title="처음 화면으로" onClick={viewport.reset}>
-            <ResetIcon />
-          </button>
-        )}
-        {!editMode && (
-          <button
-            className="icon-btn"
-            title={locked ? '잠금됨 (탭하여 스크롤 허용)' : '스크롤 허용됨 (탭하여 고정)'}
-            onClick={() => setLocked((v) => !v)}
-          >
-            {locked ? <LockClosedIcon /> : <LockOpenIcon />}
-          </button>
-        )}
-        {editMode && (
+      {/* 우상단: API 설정 (편집 모드에서만) */}
+      {editMode && (
+        <div className="top-right">
           <button className="icon-btn" title="API 설정" onClick={() => navigate('/setup')}>
             <GearIcon />
           </button>
-        )}
+        </div>
+      )}
+
+      {/* 좌하단: 편집 / 잠금 / 리셋 */}
+      <div className="bottom-left">
         <button
           className={`icon-btn ${editMode ? 'active' : ''}`}
           title={editMode ? '편집 종료' : '편집 모드'}
@@ -221,6 +211,20 @@ export default function Board() {
         >
           <PencilIcon />
         </button>
+        {!editMode && (
+          <button
+            className="icon-btn"
+            title={locked ? '잠금됨 (탭하여 스크롤 허용)' : '스크롤 허용됨 (탭하여 고정)'}
+            onClick={() => setLocked((v) => !v)}
+          >
+            {locked ? <LockClosedIcon /> : <LockOpenIcon />}
+          </button>
+        )}
+        {!editMode && !locked && (
+          <button className="icon-btn" title="처음 화면으로" onClick={viewport.reset}>
+            <ResetIcon />
+          </button>
+        )}
       </div>
 
       {status === 'loading' && <div className="toast">Notion 에서 불러오는 중…</div>}

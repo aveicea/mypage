@@ -68,6 +68,18 @@ export const MoveIcon = () => (
   </svg>
 );
 
+export const ChevronUpIcon = () => (
+  <svg {...base}>
+    <path d="M18 15l-6-6-6 6" />
+  </svg>
+);
+
+export const ChevronDownIcon = () => (
+  <svg {...base}>
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
+
 export const TrashIcon = () => (
   <svg {...base}>
     <path d="M3 6h18" />
