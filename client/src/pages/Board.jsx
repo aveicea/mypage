@@ -13,6 +13,7 @@ import LinkWidget from '../widgets/LinkWidget.jsx';
 import EmbedWidget from '../widgets/EmbedWidget.jsx';
 import GithubWidget from '../widgets/GithubWidget.jsx';
 import DrawWidget from '../widgets/DrawWidget.jsx';
+import ViewButtonWidget from '../widgets/ViewButtonWidget.jsx';
 import {
   PencilIcon, LockClosedIcon, LockOpenIcon, GearIcon,
   PlusIcon, MinusIcon, ResetIcon,
@@ -26,6 +27,7 @@ const DEFAULTS = {
   embed: { width: 360, height: 240, content: { url: '' } },
   github: { width: 320, height: 200, content: { url: '' } },
   draw: { width: 300, height: 220, content: { strokes: [] } },
+  viewbtn: { width: 130, height: 46, content: { name: '뷰' } },
 };
 
 const ADD_TYPES = [
@@ -36,6 +38,7 @@ const ADD_TYPES = [
   ['embed', '임베드'],
   ['github', '깃허브 카드'],
   ['draw', '그림'],
+  ['viewbtn', '뷰 버튼'],
 ];
 
 export default function Board() {
@@ -129,6 +132,8 @@ export default function Board() {
   async function handleAdd(type, world) {
     const def = DEFAULTS[type] || DEFAULTS.text;
     const pos = world || viewport.screenToWorld(window.innerWidth / 2, window.innerHeight / 2);
+    // 뷰 버튼은 생성 시 현재 화면을 가리키도록 저장
+    const content = type === 'viewbtn' ? { name: '뷰', rect: captureRect() } : def.content;
     const widget = {
       type,
       name: `${type}-${Date.now()}`,
@@ -137,7 +142,7 @@ export default function Board() {
       width: def.width,
       height: def.height,
       zIndex: maxZ + 1,
-      content: def.content,
+      content,
     };
     const created = await addWidget(widget);
     if (created) setSelectedId(created.id);
@@ -155,6 +160,8 @@ export default function Board() {
         setLocked(false);
         setSelectedId(w.id);
       },
+      onJumpTo: (rect) => viewport.fitTo(rect),
+      getCurrentRect: captureRect,
       onChange: (patch, opts) => updateWidget(w.id, patch, opts),
     };
     switch (w.type) {
@@ -163,6 +170,7 @@ export default function Board() {
       case 'embed': return <EmbedWidget {...common} />;
       case 'github': return <GithubWidget {...common} />;
       case 'draw': return <DrawWidget {...common} />;
+      case 'viewbtn': return <ViewButtonWidget {...common} />;
       case 'postit':
       case 'text':
       default: return <TextWidget {...common} />;

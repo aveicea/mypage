@@ -165,6 +165,7 @@ export default function Canvas({
     ['embed', '임베드'],
     ['github', '깃허브 카드'],
     ['draw', '그림'],
+    ['viewbtn', '뷰 버튼'],
   ];
 
   return (
@@ -194,7 +195,11 @@ export default function Canvas({
       </div>
 
       {menu && (
-        <div className="context-menu" style={{ left: menu.x, top: menu.y }}>
+        <div
+          className="context-menu"
+          style={{ left: menu.x, top: menu.y }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
           {types.map(([type, label]) => (
             <button
               key={type}
