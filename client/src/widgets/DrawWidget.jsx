@@ -26,7 +26,7 @@ export default function DrawWidget({ widget, editMode, onChange }) {
   const [cur, setCur] = useState(null);
   const [color, setColor] = useState(PEN_COLORS[0]);
   const [width, setWidth] = useState(2);
-  const [tool, setTool] = useState('pen'); // 'pen' | 'eraser'
+  const [tool, setTool] = useState('none'); // 'none'(선택/이동) | 'pen' | 'eraser'
 
   function pt(e) {
     const r = svgRef.current.getBoundingClientRect();
@@ -48,6 +48,7 @@ export default function DrawWidget({ widget, editMode, onChange }) {
   }
 
   function onDown(e) {
+    if (tool === 'none') return; // 선택/이동 모드: 위젯 프레임이 처리하도록 둠
     e.stopPropagation();
     svgRef.current.setPointerCapture(e.pointerId);
     if (tool === 'eraser') {
@@ -90,6 +91,7 @@ export default function DrawWidget({ widget, editMode, onChange }) {
     <div className="w-draw" style={{ background }}>
       {editMode && (
         <div className="draw-tools" onPointerDown={(e) => e.stopPropagation()}>
+          <button className={`draw-w ${tool === 'none' ? 'on' : ''}`} title="선택/이동" onClick={() => setTool('none')}>↖</button>
           {PEN_COLORS.map((c) => (
             <button
               key={c}
@@ -130,7 +132,7 @@ export default function DrawWidget({ widget, editMode, onChange }) {
         ref={svgRef}
         viewBox="0 0 1 1"
         preserveAspectRatio="none"
-        style={{ cursor: tool === 'eraser' ? 'cell' : 'crosshair' }}
+        style={{ cursor: tool === 'eraser' ? 'cell' : tool === 'pen' ? 'crosshair' : 'default', pointerEvents: tool === 'none' ? 'none' : 'auto' }}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
