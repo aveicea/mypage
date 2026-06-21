@@ -45,6 +45,17 @@ npm run dev            # server(8787) + client(5173) 동시 실행
 - 그 링크를 북마크하면 다른 기기에서도 같은 DB 로 바로 연결
 - **위젯 데이터 자체는 절대 로컬에 저장하지 않음** (항상 Notion 에서 로드)
 
+## 배포 (Vercel)
+
+이 저장소는 Vercel 배포 설정(`vercel.json` + `api/index.mjs`)을 포함합니다.
+
+- 프론트엔드: `client/dist` 정적 빌드로 서빙
+- 백엔드: `server/src/app.js` Express 앱이 `/api/*` 서버리스 함수로 동작
+- SPA 라우팅(`/setup` 등)은 `index.html` 로 폴백
+
+Vercel 에 레포를 import 하면 별도 설정 없이 빌드/배포됩니다. 환경변수는
+필요 없습니다 (노션 키/DB ID 는 런타임에 `/setup` 에서 입력 → 요청 헤더로 전달).
+
 ## 사용
 
 - 기본 **보기 모드**: 패닝(드래그)/줌(휠) + 위젯 내부 동작만 가능
