@@ -30,14 +30,17 @@ export default function WidgetFrame({
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
-  function startResize(e) {
+  function startResize(e, dir) {
     if (!editMode) return;
     e.stopPropagation();
     onSelect?.(widget.id);
     dragRef.current = {
       mode: 'resize',
+      dir,
       startX: e.clientX,
       startY: e.clientY,
+      origX: widget.x,
+      origY: widget.y,
       origW: widget.width,
       origH: widget.height,
     };
@@ -52,12 +55,23 @@ export default function WidgetFrame({
     const dy = (e.clientY - d.startY) / zoom;
     if (d.mode === 'move') {
       onChange({ x: d.origX + dx, y: d.origY + dy });
-    } else {
-      onChange({
-        width: Math.max(80, d.origW + dx),
-        height: Math.max(60, d.origH + dy),
-      });
+      return;
     }
+
+    const MINW = 80;
+    const MINH = 60;
+    let nx = d.origX;
+    let ny = d.origY;
+    let nw = d.origW;
+    let nh = d.origH;
+    const dir = d.dir;
+    if (dir.includes('e')) nw = d.origW + dx;
+    if (dir.includes('s')) nh = d.origH + dy;
+    if (dir.includes('w')) { nw = d.origW - dx; nx = d.origX + dx; }
+    if (dir.includes('n')) { nh = d.origH - dy; ny = d.origY + dy; }
+    if (nw < MINW) { if (dir.includes('w')) nx -= MINW - nw; nw = MINW; }
+    if (nh < MINH) { if (dir.includes('n')) ny -= MINH - nh; nh = MINH; }
+    onChange({ x: nx, y: ny, width: nw, height: nh });
   }
 
   function endDrag(e) {
@@ -94,12 +108,15 @@ export default function WidgetFrame({
             onPointerMove={onMove}
             onPointerUp={endDrag}
           />
-          <div
-            className="widget-resize"
-            onPointerDown={startResize}
-            onPointerMove={onMove}
-            onPointerUp={endDrag}
-          />
+          {['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((dir) => (
+            <div
+              key={dir}
+              className={`widget-resize r-${dir}`}
+              onPointerDown={(e) => startResize(e, dir)}
+              onPointerMove={onMove}
+              onPointerUp={endDrag}
+            />
+          ))}
           {selected && (
             <button
               className="widget-delete"

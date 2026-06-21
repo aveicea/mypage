@@ -97,15 +97,29 @@ button {
 
 .widget-resize {
   position: absolute;
-  right: -4px;
-  bottom: -4px;
-  width: 16px;
-  height: 16px;
+  z-index: 2;
+}
+
+/* 코너 핸들 (작은 사각형) */
+.r-ne, .r-nw, .r-se, .r-sw {
+  width: 14px;
+  height: 14px;
   border-radius: 4px;
   background: var(--accent);
   border: 2px solid #fff;
-  cursor: nwse-resize;
 }
+.r-nw { top: -7px; left: -7px; cursor: nwse-resize; }
+.r-se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+.r-ne { top: -7px; right: -7px; cursor: nesw-resize; }
+.r-sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+
+/* 변 핸들 (투명한 띠) */
+.r-n, .r-s { left: 8px; right: 8px; height: 10px; cursor: ns-resize; }
+.r-e, .r-w { top: 8px; bottom: 8px; width: 10px; cursor: ew-resize; }
+.r-n { top: -5px; }
+.r-s { bottom: -5px; }
+.r-w { left: -5px; }
+.r-e { right: -5px; }
 
 .widget-delete {
   position: absolute;
