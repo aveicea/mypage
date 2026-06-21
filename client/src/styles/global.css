@@ -340,6 +340,8 @@ button {
 }
 .order-row:hover { background: #f5f6f8; }
 .order-row.sel { background: var(--accent-soft); }
+.order-grip { color: #9aa0a8; cursor: grab; font-size: 13px; line-height: 1; user-select: none; }
+.order-row:active .order-grip { cursor: grabbing; }
 .order-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .order-row button {
   border: none;

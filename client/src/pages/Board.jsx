@@ -82,6 +82,21 @@ export default function Board() {
   const [autoEditId, setAutoEditId] = useState(null); // 추가 직후 자동 편집할 위젯
   const [activeWidgetId, setActiveWidgetId] = useState(null); // 기본 모드에서 임시 편집 활성 위젯
   const [orderPanel, setOrderPanel] = useState(false); // 위젯 순서 사이드바
+  const dragOrderId = useRef(null);
+
+  function reorderTo(srcId, dstId) {
+    if (!srcId || !dstId || srcId === dstId) return;
+    const sorted = [...widgets].sort((x, y) => (y.zIndex || 1) - (x.zIndex || 1));
+    const from = sorted.findIndex((w) => w.id === srcId);
+    const to = sorted.findIndex((w) => w.id === dstId);
+    if (from < 0 || to < 0 || from === to) return;
+    const [moved] = sorted.splice(from, 1);
+    sorted.splice(to, 0, moved);
+    sorted.forEach((w, idx) => {
+      const z = sorted.length - idx;
+      if ((w.zIndex || 1) !== z) updateWidget(w.id, { zIndex: z }, { commit: true });
+    });
+  }
 
   function swapOrder(a, b) {
     if (!b) return;
@@ -366,8 +381,13 @@ export default function Board() {
               <div
                 key={w.id}
                 className={`order-row ${selectedId === w.id ? 'sel' : ''}`}
+                draggable
+                onDragStart={() => { dragOrderId.current = w.id; }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => { reorderTo(dragOrderId.current, w.id); dragOrderId.current = null; }}
                 onClick={() => setSelectedId(w.id)}
               >
+                <span className="order-grip" title="드래그하여 순서 변경">⠿</span>
                 <span className="order-name">{widgetLabel(w)}</span>
                 <button
                   disabled={i === 0}
