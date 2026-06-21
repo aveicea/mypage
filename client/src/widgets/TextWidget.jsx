@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { WidgetChromeContext } from './WidgetFrame.jsx';
 
 /** 인라인 마크다운 (**굵게**, ~~취소~~, ++밑줄++, *기울임*, `코드`, [링크](url)) */
 function inlineMd(s) {
@@ -33,6 +35,7 @@ function serialize(rows) {
 }
 
 export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, onAutoEmpty, onChange }) {
+  const { host } = useContext(WidgetChromeContext);
   const text = widget.content?.text ?? '';
   const wasAuto = useRef(false);
   const [editing, setEditing] = useState(false);
@@ -211,17 +214,20 @@ export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, o
 
   /* ===== 편집 모드(인라인 에디터) ===== */
   if (editing) {
+    const fmtBar = (
+      <div className="fmt-bar" onMouseDown={(e) => e.preventDefault()}>
+        <button onClick={() => applyToFocused((i) => wrapSel(i, '**'))} title="굵게"><b>B</b></button>
+        <button onClick={() => applyToFocused((i) => wrapSel(i, '*'))} title="기울임"><i>I</i></button>
+        <button onClick={() => applyToFocused((i) => wrapSel(i, '++'))} title="밑줄"><u>U</u></button>
+        <button onClick={() => applyToFocused((i) => wrapSel(i, '~~'))} title="취소선"><s>S</s></button>
+        <button onClick={() => applyToFocused((i) => wrapSel(i, '`'))} title="코드">{'</>'}</button>
+        <button onClick={() => applyToFocused((i) => setRow(i, (r) => ({ ...r, text: /^#{1,3}\s/.test(r.text) ? r.text.replace(/^#{1,3}\s/, '') : '# ' + r.text })))} title="제목">H</button>
+        <button onClick={() => applyToFocused((i) => setRow(i, (r) => ({ ...r, task: !r.task })))} title="체크박스">☑</button>
+      </div>
+    );
     return (
       <div className="w-text w-editor" onBlur={onEditorBlur}>
-        <div className="fmt-bar" onMouseDown={(e) => e.preventDefault()}>
-          <button onClick={() => applyToFocused((i) => wrapSel(i, '**'))} title="굵게"><b>B</b></button>
-          <button onClick={() => applyToFocused((i) => wrapSel(i, '*'))} title="기울임"><i>I</i></button>
-          <button onClick={() => applyToFocused((i) => wrapSel(i, '++'))} title="밑줄"><u>U</u></button>
-          <button onClick={() => applyToFocused((i) => wrapSel(i, '~~'))} title="취소선"><s>S</s></button>
-          <button onClick={() => applyToFocused((i) => wrapSel(i, '`'))} title="코드">{'</>'}</button>
-          <button onClick={() => applyToFocused((i) => setRow(i, (r) => ({ ...r, text: /^#{1,3}\s/.test(r.text) ? r.text.replace(/^#{1,3}\s/, '') : '# ' + r.text })))} title="제목">H</button>
-          <button onClick={() => applyToFocused((i) => setRow(i, (r) => ({ ...r, task: !r.task })))} title="체크박스">☑</button>
-        </div>
+        {host ? createPortal(fmtBar, host) : fmtBar}
         {rows.map((r, i) => (
           <div className="ed-row" key={i}>
             {r.task && (

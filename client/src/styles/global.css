@@ -426,13 +426,21 @@ button {
   word-break: break-word;
 }
 
-/* 접힘 표시: 오른쪽 아래 모서리의 회색 세모(접힌 부분), 나머지(모서리)는 투명 */
+/* 포스트잇 배경: 오른쪽 아래 모서리를 잘라 접힌 듯 (그 부분은 배경 안 보임) */
+.postit-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+
+/* 접힘 표시: 오른쪽 아래 모서리의 작은 회색 세모(접힌 부분) */
 .fold-btn {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 24px;
-  height: 24px;
+  width: 14px;
+  height: 14px;
   background: #9ca3af;
   clip-path: polygon(0 0, 100% 0, 0 100%);
   cursor: pointer;
@@ -443,7 +451,7 @@ button {
 /* 스크롤바가 접힘 세모 아래까지 내려가지 않도록 본문 아래 여백 확보 */
 .widget--text .widget-body,
 .widget--postit .widget-body {
-  border-bottom: 22px solid transparent;
+  border-bottom: 16px solid transparent;
 }
 
 .w-collapsed {

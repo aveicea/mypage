@@ -48,10 +48,6 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
     );
   }
 
-  // 위젯을 항상 꽉 채우되, zoom 으로 콘텐츠가 보이는 배율을 조절
-  const w = (widget.width || 360) / zoom;
-  const h = (widget.height || 240) / zoom;
-
   const tools = (
     <div className="embed-tools" onPointerDown={(e) => e.stopPropagation()}>
       <button onClick={() => setZoom(zoom - 0.1)}>−</button>
@@ -69,11 +65,8 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
     </div>
   );
 
-  // zoom 이 1이면 transform 없이 100% 로 렌더(선명하게), 1이 아니면 스케일
-  const iframeStyle =
-    zoom === 1
-      ? { width: '100%', height: '100%' }
-      : { width: w, height: h, transform: `scale(${zoom})`, transformOrigin: '0 0' };
+  // 선명하게: transform 스케일(래스터) 대신 CSS zoom(레이아웃 확대) 사용
+  const iframeStyle = { width: '100%', height: '100%', ...(zoom !== 1 ? { zoom } : {}) };
 
   return (
     <div className="w-embed" onDoubleClick={() => editMode && setUrl()}>

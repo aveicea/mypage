@@ -26,7 +26,6 @@ export default function Canvas({
   const panning = useRef(null);
   const pointers = useRef(new Map()); // pointerId -> {x,y} (핀치용)
   const pinch = useRef(null); // { dist, cx, cy }
-  const wheelSess = useRef({ el: null, start: 0, last: 0 }); // 위젯 위 휠 세션
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
 
@@ -50,21 +49,19 @@ export default function Canvas({
       const scrollable = body && body.scrollHeight - body.clientHeight > 1;
 
       if (scrollable) {
-        if (!panEnabled) return; // 잠금 보기: 보드 못 움직이므로 위젯이 바로 스크롤
-        // 같은 위젯 위에서 0.5초 넘게 계속 스크롤하면 그때 위젯 내부 스크롤로 전환
-        const now = Date.now();
-        const s = wheelSess.current;
-        const cont = s.el === body && now - s.last < 250;
-        if (!cont) { s.el = body; s.start = now; }
-        s.last = now;
-        if (now - s.start >= 500) return; // 위젯 스크롤 허용
-        // 아직 0.5초 안 됨 → 보드 이동
-        e.preventDefault();
-        panBy(-e.deltaX, -e.deltaY);
+        // 스크롤 체이닝: 위젯이 그 방향으로 더 스크롤할 수 있으면 위젯이 스크롤,
+        // 끝에 닿으면 보드 이동
+        const atTop = body.scrollTop <= 0;
+        const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 1;
+        const canScroll = (e.deltaY > 0 && !atBottom) || (e.deltaY < 0 && !atTop);
+        if (canScroll) return; // 위젯이 스크롤
+        if (panEnabled) {
+          e.preventDefault();
+          panBy(-e.deltaX, -e.deltaY);
+        }
         return;
       }
 
-      wheelSess.current.el = null;
       // 일반 스크롤 = 보드 이동 (편집 모드이거나 잠금 해제 보기)
       if (panEnabled) {
         e.preventDefault();
@@ -183,7 +180,12 @@ export default function Canvas({
     >
       <div
         className="canvas-layer"
-        style={{ transform: `translate(${Math.round(pan.x)}px, ${Math.round(pan.y)}px) scale(${zoom})` }}
+        style={{
+          transform:
+            zoom === 1
+              ? `translate(${Math.round(pan.x)}px, ${Math.round(pan.y)}px)`
+              : `translate(${Math.round(pan.x)}px, ${Math.round(pan.y)}px) scale(${zoom})`,
+        }}
       >
         {editMode && homeRect && (
           <HomeFrame

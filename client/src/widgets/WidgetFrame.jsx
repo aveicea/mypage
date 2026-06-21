@@ -197,12 +197,17 @@ export default function WidgetFrame({
         // 뷰 버튼은 내용(글씨)에 맞게 자동 크기
         ...(isViewbtn ? {} : { width: widget.width, height: widget.height }),
         zIndex: widget.zIndex,
-        ...(isPostit ? { background: widget.content?.color || POSTIT_COLORS[0] } : {}),
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
     >
+      {isPostit && (
+        <div
+          className="postit-bg"
+          style={{ background: widget.content?.color || POSTIT_COLORS[0] }}
+        />
+      )}
       <div className="widget-body">
         <WidgetChromeContext.Provider value={{ host: extHost, selected, editMode: act }}>
           {children}
