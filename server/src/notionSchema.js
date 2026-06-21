@@ -113,7 +113,21 @@ export function widgetToProperties(widget, schema) {
   if (props.zIndex && widget.zIndex !== undefined) out[props.zIndex] = { number: Math.round(widget.zIndex) };
   if (props.content && widget.content !== undefined) {
     const json = JSON.stringify(widget.content ?? {});
-    out[props.content] = { rich_text: [{ text: { content: json.slice(0, 2000) } }] };
+    out[props.content] = { rich_text: chunkRichText(json) };
   }
   return out;
+}
+
+/**
+ * Notion rich_text 는 항목당 content 가 2000자로 제한된다.
+ * 긴 JSON(이미지 dataURL 등)을 2000자 단위로 쪼개 여러 rich_text 항목으로 저장.
+ * 읽을 때 richText() 가 모든 항목의 plain_text 를 이어붙이므로 그대로 복원된다.
+ */
+function chunkRichText(str, limit = 2000, maxItems = 100) {
+  if (!str) return [{ text: { content: '' } }];
+  const items = [];
+  for (let i = 0; i < str.length && items.length < maxItems; i += limit) {
+    items.push({ text: { content: str.slice(i, i + limit) } });
+  }
+  return items;
 }

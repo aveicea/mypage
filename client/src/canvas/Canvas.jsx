@@ -8,6 +8,8 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
   const { pan, zoom, zoomAt, panBy, screenToWorld } = viewport;
   const rootRef = useRef(null);
   const panning = useRef(null);
+  const pointers = useRef(new Map()); // pointerId -> {x,y} (핀치용)
+  const pinch = useRef(null); // { dist, cx, cy }
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
 
@@ -27,6 +29,10 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
     return () => el.removeEventListener('wheel', onWheel);
   }, [zoomAt]);
 
+  function dist(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
   function isBackground(e) {
     return e.target === rootRef.current || e.target.classList.contains('canvas-layer');
   }
@@ -34,13 +40,42 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
   function onPointerDown(e) {
     if (menu) setMenu(null);
     if (!isBackground(e)) return;
-    if (e.button !== 0) return; // 좌클릭만 패닝
-    panning.current = { x: e.clientX, y: e.clientY, moved: false };
-    setGrabbing(true);
+    if (e.pointerType === 'mouse' && e.button !== 0) return; // 좌클릭만 패닝
+
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     e.currentTarget.setPointerCapture(e.pointerId);
+
+    if (pointers.current.size === 2) {
+      // 두 손가락 → 핀치 시작, 패닝 중단
+      panning.current = null;
+      const [a, b] = [...pointers.current.values()];
+      pinch.current = { dist: dist(a, b), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
+      setGrabbing(false);
+    } else {
+      panning.current = { x: e.clientX, y: e.clientY, moved: false };
+      setGrabbing(true);
+    }
   }
 
   function onPointerMove(e) {
+    if (!pointers.current.has(e.pointerId)) {
+      if (!panning.current) return;
+    } else {
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // 핀치 줌
+    if (pinch.current && pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      const d = dist(a, b);
+      const rect = rootRef.current.getBoundingClientRect();
+      const cx = (a.x + b.x) / 2 - rect.left;
+      const cy = (a.y + b.y) / 2 - rect.top;
+      if (pinch.current.dist > 0) zoomAt(cx, cy, d / pinch.current.dist);
+      pinch.current.dist = d;
+      return;
+    }
+
     if (!panning.current) return;
     const dx = e.clientX - panning.current.x;
     const dy = e.clientY - panning.current.y;
@@ -51,6 +86,9 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
   }
 
   function onPointerUp(e) {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) pinch.current = null;
+
     const wasPanning = panning.current;
     panning.current = null;
     setGrabbing(false);
