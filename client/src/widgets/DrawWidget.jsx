@@ -27,6 +27,7 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
   const [cur, setCur] = useState(null);
   const [tool, setTool] = useState('none'); // none | pen | hl | eraser
   const [popup, setPopup] = useState(null); // null | 'pen' | 'hl'
+  const [drawing, setDrawing] = useState(false); // 보기 모드에서 더블클릭으로 켜는 그리기 세션
   const [penColor, setPenColor] = useState(PEN_COLORS[0]);
   const [penWidth, setPenWidth] = useState(2);
   const [hlColor, setHlColor] = useState('#f59e0b');
@@ -53,7 +54,8 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
   }
 
   function onDown(e) {
-    if (!selected || tool === 'none') return;
+    const session = (editMode && selected) || drawing;
+    if (!session || tool === 'none') return;
     e.stopPropagation();
     svgRef.current.setPointerCapture(e.pointerId);
     if (tool === 'eraser') {
@@ -123,41 +125,65 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
   const setPopupColor = popup === 'hl' ? setHlColor : setPenColor;
   const setPopupWidth = popup === 'hl' ? setHlWidth : setPenWidth;
 
-  const active = selected ? tool : 'none';
+  const inEdit = editMode && selected;
+  const session = inEdit || drawing;
+  const active = session ? tool : 'none';
+
+  function startSession() {
+    setDrawing(true);
+    if (tool === 'none') setTool('pen');
+  }
+  function endSession() {
+    setDrawing(false);
+    setPopup(null);
+  }
+
   const bar = (
     <div className="draw-bar" onPointerDown={(e) => e.stopPropagation()}>
+      {/* 색/굵기 선택 팝업을 도구 버튼보다 위에 */}
+      {popup && (
+        <div className="draw-popup">
+          {popupColors.map((c) => (
+            <button key={c} className={`draw-swatch ${popupColor === c ? 'on' : ''}`} style={{ background: c }} onClick={() => setPopupColor(c)} />
+          ))}
+          <span className="draw-sep" />
+          {popupWidths.map((w) => (
+            <button key={w} className={`draw-wsel ${popupWidth === w ? 'on' : ''}`} onClick={() => setPopupWidth(w)}>
+              <span style={{ width: Math.min(18, w), height: Math.min(18, w) }} />
+            </button>
+          ))}
+        </div>
+      )}
       <div className="draw-tools">
-            <button className={`draw-w ${tool === 'none' ? 'on' : ''}`} title="선택/이동" onClick={() => pick('none')}>↖</button>
-            <button className={`draw-w ${tool === 'pen' ? 'on' : ''}`} title="펜" onClick={() => pick('pen')}>✏️</button>
-            <button className={`draw-w ${tool === 'hl' ? 'on' : ''}`} title="형광펜" onClick={() => pick('hl')}>🖍</button>
-            <button className={`draw-w ${tool === 'eraser' ? 'on' : ''}`} title="지우개" onClick={() => pick('eraser')}>⌫</button>
-            <button className="draw-w" title="뒤로가기" onClick={undo}>↺</button>
-            <button className="draw-w" title="전체 지우기" onClick={clear}>🗑</button>
-          </div>
-          {popup && (
-            <div className="draw-popup">
-              {popupColors.map((c) => (
-                <button key={c} className={`draw-swatch ${popupColor === c ? 'on' : ''}`} style={{ background: c }} onClick={() => setPopupColor(c)} />
-              ))}
-              <span className="draw-sep" />
-              {popupWidths.map((w) => (
-                <button key={w} className={`draw-wsel ${popupWidth === w ? 'on' : ''}`} onClick={() => setPopupWidth(w)}>
-                  <span style={{ width: Math.min(18, w), height: Math.min(18, w) }} />
-                </button>
-              ))}
-            </div>
-          )}
+        {inEdit && (
+          <button className={`draw-w ${tool === 'none' ? 'on' : ''}`} title="선택/이동" onClick={() => pick('none')}>↖</button>
+        )}
+        <button className={`draw-w ${tool === 'pen' ? 'on' : ''}`} title="펜" onClick={() => pick('pen')}>✏️</button>
+        <button className={`draw-w ${tool === 'hl' ? 'on' : ''}`} title="형광펜" onClick={() => pick('hl')}>🖍</button>
+        <button className={`draw-w ${tool === 'eraser' ? 'on' : ''}`} title="지우개" onClick={() => pick('eraser')}>⌫</button>
+        <button className="draw-w" title="뒤로가기" onClick={undo}>↺</button>
+        <button className="draw-w" title="전체 지우기" onClick={clear}>🗑</button>
+        {drawing && !inEdit && (
+          <button className="draw-w draw-done" title="완료" onClick={endSession}>✓</button>
+        )}
+      </div>
     </div>
   );
 
   return (
-    <div className="w-draw" style={{ background }} onDoubleClick={() => { if (!editMode) onRequestEdit?.(); }}>
-      {host && createPortal(bar, host)}
+    <div
+      className="w-draw"
+      style={{ background }}
+      onDoubleClick={() => { if (!inEdit) startSession(); }}
+    >
+      {inEdit && host
+        ? createPortal(bar, host)
+        : drawing && <div className="draw-bar-float">{bar}</div>}
       <svg
         ref={svgRef}
         viewBox="0 0 1 1"
         preserveAspectRatio="none"
-        style={{ cursor: active === 'eraser' ? 'cell' : active === 'none' ? 'default' : 'crosshair', pointerEvents: active === 'none' ? 'none' : 'auto' }}
+        style={{ cursor: active === 'eraser' ? 'cell' : active === 'none' ? 'default' : 'crosshair', pointerEvents: session ? 'auto' : 'none' }}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}

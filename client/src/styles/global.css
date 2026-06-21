@@ -721,6 +721,15 @@ button {
   align-items: center;
   gap: 4px;
 }
+/* 보기 모드 그리기 세션: 위젯 안 상단에 떠 있는 도구 */
+.draw-bar-float {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+.draw-done { color: #16a34a; font-weight: 700; }
 .draw-tools {
   display: flex;
   gap: 3px;
