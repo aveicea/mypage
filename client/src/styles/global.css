@@ -138,18 +138,18 @@ button {
   background: var(--accent);
   border: 2px solid #fff;
 }
-.r-nw { top: -7px; left: -7px; cursor: nwse-resize; }
-.r-se { bottom: -7px; right: -7px; cursor: nwse-resize; }
-.r-ne { top: -7px; right: -7px; cursor: nesw-resize; }
-.r-sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.r-nw { top: -11px; left: -11px; cursor: nwse-resize; }
+.r-se { bottom: -11px; right: -11px; cursor: nwse-resize; }
+.r-ne { top: -11px; right: -11px; cursor: nesw-resize; }
+.r-sw { bottom: -11px; left: -11px; cursor: nesw-resize; }
 
-/* 변 핸들 (투명한 띠) */
+/* 변 핸들 (투명한 띠) — 테두리 바깥쪽 */
 .r-n, .r-s { left: 8px; right: 8px; height: 10px; cursor: ns-resize; }
 .r-e, .r-w { top: 8px; bottom: 8px; width: 10px; cursor: ew-resize; }
-.r-n { top: -5px; }
-.r-s { bottom: -5px; }
-.r-w { left: -5px; }
-.r-e { right: -5px; }
+.r-n { top: -10px; }
+.r-s { bottom: -10px; }
+.r-w { left: -10px; }
+.r-e { right: -10px; }
 
 /* 위젯 상단 작은 툴바: 이동 핸들 + 삭제 (코너 핸들과 안 겹치게 위로) */
 .widget-toolbar {

@@ -23,6 +23,7 @@ export default function Canvas({
   const panning = useRef(null);
   const pointers = useRef(new Map()); // pointerId -> {x,y} (핀치용)
   const pinch = useRef(null); // { dist, cx, cy }
+  const wheelSess = useRef({ el: null, start: 0, last: 0 }); // 위젯 위 휠 세션
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
 
@@ -31,10 +32,6 @@ export default function Canvas({
     const el = rootRef.current;
     if (!el) return;
     const onWheel = (e) => {
-      // 위젯 안에서 스크롤이 가능한 곳이면 그 위젯이 스크롤하도록 둔다
-      const body = e.target.closest && e.target.closest('.widget-body');
-      if (body && !e.ctrlKey && body.scrollHeight - body.clientHeight > 1) return;
-
       if (e.ctrlKey) {
         // 핀치(트랙패드)/Ctrl+휠 = 확대/축소 (편집 + 잠금 해제일 때만)
         if (zoomEnabled) {
@@ -46,6 +43,25 @@ export default function Canvas({
         return;
       }
 
+      const body = e.target.closest && e.target.closest('.widget-body');
+      const scrollable = body && body.scrollHeight - body.clientHeight > 1;
+
+      if (scrollable) {
+        if (!panEnabled) return; // 잠금 보기: 보드 못 움직이므로 위젯이 바로 스크롤
+        // 같은 위젯 위에서 0.5초 넘게 계속 스크롤하면 그때 위젯 내부 스크롤로 전환
+        const now = Date.now();
+        const s = wheelSess.current;
+        const cont = s.el === body && now - s.last < 250;
+        if (!cont) { s.el = body; s.start = now; }
+        s.last = now;
+        if (now - s.start >= 500) return; // 위젯 스크롤 허용
+        // 아직 0.5초 안 됨 → 보드 이동
+        e.preventDefault();
+        panBy(-e.deltaX, -e.deltaY);
+        return;
+      }
+
+      wheelSess.current.el = null;
       // 일반 스크롤 = 보드 이동 (편집 모드이거나 잠금 해제 보기)
       if (panEnabled) {
         e.preventDefault();
