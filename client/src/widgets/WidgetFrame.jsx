@@ -85,8 +85,7 @@ export default function WidgetFrame({
   onChange,
   onDelete,
   onDragStart,
-  onBringFront,
-  onSendBack,
+  onMoveBy,
   others = [],
   setGuides,
   children,
@@ -102,12 +101,12 @@ export default function WidgetFrame({
     // 핸들/툴바는 각자 처리
     if (e.target.closest('.widget-resize') || e.target.closest('.widget-toolbar')) return;
     e.stopPropagation(); // 캔버스 패닝 방지
-    onSelect?.(widget.id);
+    onSelect?.(widget.id, e);
   }
 
   function startMove(e) {
     e.stopPropagation();
-    onSelect?.(widget.id);
+    if (!selected) onSelect?.(widget.id, e); // 이미 선택돼 있으면 그룹 유지
     onDragStart?.();
     drag.current = {
       mode: 'move',
@@ -123,6 +122,7 @@ export default function WidgetFrame({
   function startResize(e, dir) {
     e.stopPropagation();
     onSelect?.(widget.id);
+    onChange({}, { commit: false });
     onDragStart?.();
     drag.current = {
       mode: 'resize',
@@ -148,7 +148,10 @@ export default function WidgetFrame({
       d.moved = true;
       const snapped = computeSnap(d.ox + dx, d.oy + dy, widget.width, widget.height, others, 6 / zoom);
       setGuides?.(snapped.guides);
-      onChange({ x: snapped.x, y: snapped.y });
+      // 잡은 위젯의 시작 위치 기준 델타를 선택된 모든 위젯에 적용
+      d.lastDx = snapped.x - d.ox;
+      d.lastDy = snapped.y - d.oy;
+      onMoveBy?.(d.lastDx, d.lastDy);
       return;
     }
 
@@ -178,7 +181,10 @@ export default function WidgetFrame({
     const d = drag.current;
     drag.current = null;
     setGuides?.([]);
-    if (d && d.moved) onChange({}, { commit: true });
+    if (d && d.moved) {
+      if (d.mode === 'move') onMoveBy?.(d.lastDx || 0, d.lastDy || 0, { commit: true });
+      else onChange({}, { commit: true });
+    }
   }
 
   const isPostit = widget.type === 'postit';
