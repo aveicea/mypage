@@ -233,18 +233,6 @@ export default function WidgetFrame({
               <MoveIcon />
             </button>
             <button
-              className="wt-btn"
-              title="맨 앞으로"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); onBringFront?.(widget.id); }}
-            >⤒</button>
-            <button
-              className="wt-btn"
-              title="맨 뒤로"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); onSendBack?.(widget.id); }}
-            >⤓</button>
-            <button
               className="wt-btn wt-del"
               title="삭제"
               onPointerDown={(e) => e.stopPropagation()}

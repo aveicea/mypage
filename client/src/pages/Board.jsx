@@ -16,8 +16,18 @@ import DrawWidget from '../widgets/DrawWidget.jsx';
 import ViewButtonWidget from '../widgets/ViewButtonWidget.jsx';
 import {
   PencilIcon, LockClosedIcon, LockOpenIcon, GearIcon,
-  PlusIcon, MinusIcon, ResetIcon,
+  PlusIcon, MinusIcon, ResetIcon, LayersIcon,
 } from '../widgets/icons.jsx';
+
+const TYPE_LABEL = {
+  text: '텍스트', postit: '포스트잇', image: '이미지', link: '링크',
+  embed: '임베드', github: '깃허브', draw: '그림', viewbtn: '뷰 버튼',
+};
+function widgetLabel(w) {
+  const t = TYPE_LABEL[w.type] || w.type;
+  const txt = String(w.content?.text || w.content?.name || w.content?.url || '').replace(/\n/g, ' ').trim();
+  return txt ? `${t}: ${txt.slice(0, 16)}` : t;
+}
 
 const DEFAULTS = {
   text: { width: 220, height: 120, content: { text: '' } },
@@ -71,6 +81,34 @@ export default function Board() {
   const [activeView, setActiveView] = useState(null); // 칩으로 띄운 편집용 뷰 프레임
   const [autoEditId, setAutoEditId] = useState(null); // 추가 직후 자동 편집할 위젯
   const [activeWidgetId, setActiveWidgetId] = useState(null); // 기본 모드에서 임시 편집 활성 위젯
+  const [orderPanel, setOrderPanel] = useState(false); // 위젯 순서 사이드바
+  const dragOrderId = useRef(null);
+
+  function reorderTo(srcId, dstId) {
+    if (!srcId || !dstId || srcId === dstId) return;
+    const sorted = [...widgets].sort((x, y) => (y.zIndex || 1) - (x.zIndex || 1));
+    const from = sorted.findIndex((w) => w.id === srcId);
+    const to = sorted.findIndex((w) => w.id === dstId);
+    if (from < 0 || to < 0 || from === to) return;
+    const [moved] = sorted.splice(from, 1);
+    sorted.splice(to, 0, moved);
+    sorted.forEach((w, idx) => {
+      const z = sorted.length - idx;
+      if ((w.zIndex || 1) !== z) updateWidget(w.id, { zIndex: z }, { commit: true });
+    });
+  }
+
+  function swapOrder(a, b) {
+    if (!b) return;
+    const sorted = [...widgets].sort((x, y) => (y.zIndex || 1) - (x.zIndex || 1));
+    const ia = sorted.findIndex((w) => w.id === a.id);
+    const ib = sorted.findIndex((w) => w.id === b.id);
+    [sorted[ia], sorted[ib]] = [sorted[ib], sorted[ia]];
+    sorted.forEach((w, idx) => {
+      const z = sorted.length - idx;
+      if ((w.zIndex || 1) !== z) updateWidget(w.id, { zIndex: z }, { commit: true });
+    });
+  }
   const undoStack = useRef([]); // 되돌리기 (추가/삭제/이동/리사이즈)
   const pushUndo = (entry) => {
     undoStack.current.push(entry);
@@ -320,6 +358,51 @@ export default function Board() {
           <button className="icon-btn" title="리셋" onClick={() => viewport.fitTo(homeRect)}>
             <ResetIcon />
           </button>
+        </div>
+      )}
+
+      {/* 줌 위: 위젯 순서 사이드바 토글 */}
+      {editMode && (
+        <button
+          className={`order-toggle icon-btn ${orderPanel ? 'active' : ''}`}
+          title="위젯 순서"
+          onClick={() => setOrderPanel((v) => !v)}
+        >
+          <LayersIcon />
+        </button>
+      )}
+
+      {/* 위젯 순서 사이드바 */}
+      {editMode && orderPanel && (
+        <div className="order-panel">
+          <div className="order-title">위젯 순서 (위 = 앞)</div>
+          <div className="order-list">
+            {[...widgets].sort((a, b) => (b.zIndex || 1) - (a.zIndex || 1)).map((w, i, arr) => (
+              <div
+                key={w.id}
+                className={`order-row ${selectedId === w.id ? 'sel' : ''}`}
+                draggable
+                onDragStart={() => { dragOrderId.current = w.id; }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => { reorderTo(dragOrderId.current, w.id); dragOrderId.current = null; }}
+                onClick={() => setSelectedId(w.id)}
+              >
+                <span className="order-grip" title="드래그하여 순서 변경">⠿</span>
+                <span className="order-name">{widgetLabel(w)}</span>
+                <button
+                  disabled={i === 0}
+                  title="앞으로"
+                  onClick={(e) => { e.stopPropagation(); swapOrder(w, arr[i - 1]); }}
+                >▲</button>
+                <button
+                  disabled={i === arr.length - 1}
+                  title="뒤로"
+                  onClick={(e) => { e.stopPropagation(); swapOrder(w, arr[i + 1]); }}
+                >▼</button>
+              </div>
+            ))}
+            {widgets.length === 0 && <div className="order-empty">위젯 없음</div>}
+          </div>
         </div>
       )}
 
