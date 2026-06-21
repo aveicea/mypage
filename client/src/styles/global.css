@@ -176,6 +176,17 @@ button {
 .wt-move { cursor: move; }
 .wt-del:hover { color: var(--danger); }
 
+.wt-swatch {
+  width: 18px;
+  height: 18px;
+  align-self: center;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 0;
+  cursor: pointer;
+}
+.wt-swatch:hover { transform: scale(1.15); }
+
 /* ---------- 툴바 / 컨트롤 (아이콘 전용, 배경/테두리 없음) ---------- */
 .toolbar {
   position: fixed;

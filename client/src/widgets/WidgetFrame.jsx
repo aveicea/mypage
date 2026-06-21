@@ -1,6 +1,8 @@
 import { useRef } from 'react';
 import { MoveIcon, TrashIcon } from './icons.jsx';
 
+export const POSTIT_COLORS = ['#fff7c2', '#ffd6e0', '#d6f5d6', '#cfe8ff', '#e7d9ff', '#ffe0c2', '#eceff1'];
+
 /**
  * 위젯 공통 프레임.
  * 편집 모드 + 선택 시: 위쪽 작은 툴바의 "이동 핸들"을 잡아야만 이동(본문 드래그 X),
@@ -93,6 +95,8 @@ export default function WidgetFrame({
     if (d && d.moved) onChange({}, { commit: true });
   }
 
+  const isPostit = widget.type === 'postit';
+
   return (
     <div
       ref={ref}
@@ -103,6 +107,7 @@ export default function WidgetFrame({
         width: widget.width,
         height: widget.height,
         zIndex: widget.zIndex,
+        ...(isPostit ? { background: widget.content?.color || POSTIT_COLORS[0] } : {}),
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -127,6 +132,21 @@ export default function WidgetFrame({
             >
               <TrashIcon />
             </button>
+
+            {isPostit &&
+              POSTIT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  className="wt-swatch"
+                  title="색상"
+                  style={{ background: c }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange({ content: { ...widget.content, color: c } }, { commit: true });
+                  }}
+                />
+              ))}
           </div>
 
           {['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((dir) => (
