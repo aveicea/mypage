@@ -1,5 +1,5 @@
 const NOTION_BASE = 'https://api.notion.com/v1';
-const NOTION_VERSION = process.env.NOTION_VERSION || '2022-06-28';
+export const NOTION_VERSION = process.env.NOTION_VERSION || '2022-06-28';
 
 /**
  * 사용자가 붙여넣은 값에서 32자리 Notion ID 를 추출한다.
@@ -65,4 +65,27 @@ export async function notionFetch(apiKey, path, { method = 'GET', body } = {}) {
     throw err;
   }
   return data;
+}
+
+/**
+ * Notion File Upload 의 전송 단계(multipart). upload_url 로 파일 바이트를 보낸다.
+ */
+export async function notionSendFile(apiKey, uploadUrl, buffer, filename, contentType) {
+  const fd = new FormData();
+  fd.append('file', new Blob([buffer], { type: contentType || 'application/octet-stream' }), filename || 'file');
+  const res = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Notion-Version': NOTION_VERSION,
+    },
+    body: fd,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    const err = new Error(`Notion 파일 전송 실패 (${res.status}): ${t}`);
+    err.status = 502;
+    throw err;
+  }
+  return res.json();
 }

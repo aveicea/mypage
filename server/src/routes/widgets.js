@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getCredentials, notionFetch } from '../notionClient.js';
+import { getCredentials, notionFetch, notionSendFile } from '../notionClient.js';
 import { resolveSchema, pageToWidget, widgetToProperties, clearSchemaCache } from '../notionSchema.js';
 
 const router = Router();
@@ -54,6 +54,43 @@ router.post('/', wrap(async (req, res) => {
     body: {
       parent: { database_id: databaseId },
       properties: widgetToProperties(widget, schema),
+    },
+  });
+
+  res.json({ widget: pageToWidget(page, schema) });
+}));
+
+/** 이미지 업로드 → Notion File Upload → 페이지 Files 속성에 첨부 */
+router.post('/:id/image', wrap(async (req, res) => {
+  const { apiKey, databaseId } = getCredentials(req);
+  let schema = await resolveSchema(apiKey, databaseId);
+
+  // Files 속성이 없으면 'Image' 라는 이름으로 자동 생성
+  if (!schema.props.image) {
+    await notionFetch(apiKey, `/databases/${databaseId}`, {
+      method: 'PATCH',
+      body: { properties: { Image: { files: {} } } },
+    });
+    clearSchemaCache(databaseId);
+    schema = await resolveSchema(apiKey, databaseId, { force: true });
+  }
+  const imageProp = schema.props.image;
+
+  const { filename = 'image', contentType = 'application/octet-stream', dataBase64 } = req.body || {};
+  if (!dataBase64) return res.status(400).json({ error: '이미지 데이터(dataBase64)가 없습니다' });
+  const buffer = Buffer.from(dataBase64, 'base64');
+
+  // 1) 업로드 객체 생성 → upload_url 획득
+  const upload = await notionFetch(apiKey, '/file_uploads', { method: 'POST', body: {} });
+  // 2) 파일 바이트 전송
+  await notionSendFile(apiKey, upload.upload_url, buffer, filename, contentType);
+  // 3) 페이지 Files 속성에 첨부
+  const page = await notionFetch(apiKey, `/pages/${req.params.id}`, {
+    method: 'PATCH',
+    body: {
+      properties: {
+        [imageProp]: { files: [{ type: 'file_upload', file_upload: { id: upload.id }, name: filename }] },
+      },
     },
   });
 

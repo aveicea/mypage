@@ -13,6 +13,7 @@ const FIELD_CANDIDATES = {
   height: ['height', '높이', 'h', '세로'],
   zIndex: ['zindex', 'z-index', 'z', '순서', 'order', '레이어'],
   content: ['content', '내용', 'data', '데이터', 'json'],
+  image: ['image', '이미지', '사진', '파일', 'file', '첨부', 'attachment'],
 };
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
@@ -38,7 +39,7 @@ export async function resolveSchema(apiKey, databaseId, { force = false } = {}) 
     byNorm[norm(name)] = { name, type: def.type };
   }
 
-  const resolved = { type: null, x: null, y: null, width: null, height: null, zIndex: null, content: null };
+  const resolved = { type: null, x: null, y: null, width: null, height: null, zIndex: null, content: null, image: null };
   for (const [field, candidates] of Object.entries(FIELD_CANDIDATES)) {
     for (const cand of candidates) {
       const hit = byNorm[norm(cand)];
@@ -46,6 +47,12 @@ export async function resolveSchema(apiKey, databaseId, { force = false } = {}) 
         resolved[field] = hit.name;
         break;
       }
+    }
+  }
+  // 이미지: 이름 매칭 실패 시 'files' 타입 속성을 자동 사용
+  if (!resolved.image) {
+    for (const [name, def] of Object.entries(properties)) {
+      if (def.type === 'files') { resolved.image = name; break; }
     }
   }
 
@@ -80,6 +87,13 @@ export function pageToWidget(page, schema) {
     } catch {
       content = { _raw: rawContent };
     }
+  }
+
+  // 이미지 위젯: Files 속성에 업로드된 파일이 있으면 그 URL 을 src 로 사용(매 로드 시 갱신)
+  if (props.image && Array.isArray(p[props.image]?.files) && p[props.image].files.length) {
+    const f = p[props.image].files[0];
+    const url = f?.file?.url || f?.external?.url;
+    if (url) content = { ...content, src: url };
   }
 
   return {
