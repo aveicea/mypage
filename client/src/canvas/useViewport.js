@@ -41,5 +41,22 @@ export function useViewport() {
     setZoom(1);
   }, []);
 
-  return { pan, zoom, screenToWorld, zoomAt, panBy, reset, MIN_ZOOM, MAX_ZOOM };
+  /** 주어진 월드 영역(rect)이 화면에 꽉 차게 pan/zoom 을 맞춘다 */
+  const fitTo = useCallback((rect) => {
+    if (!rect || !rect.width || !rect.height) {
+      setPan({ x: 0, y: 0 });
+      setZoom(1);
+      return;
+    }
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.min(vw / rect.width, vh / rect.height)));
+    setZoom(z);
+    setPan({
+      x: (vw - rect.width * z) / 2 - rect.x * z,
+      y: (vh - rect.height * z) / 2 - rect.y * z,
+    });
+  }, []);
+
+  return { pan, zoom, screenToWorld, zoomAt, panBy, reset, fitTo, MIN_ZOOM, MAX_ZOOM };
 }

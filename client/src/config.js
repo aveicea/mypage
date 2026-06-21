@@ -86,6 +86,21 @@ export function resolveConfig() {
   return loadStoredConfig();
 }
 
+/** 홈(처음 보일 영역) rect 는 기기/보드별 뷰 설정이라 localStorage 에 둔다 */
+export function loadHomeRect(dbId) {
+  try {
+    const r = JSON.parse(localStorage.getItem('widget-board:home:' + dbId));
+    if (r && r.width && r.height) return r;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export function saveHomeRect(dbId, rect) {
+  localStorage.setItem('widget-board:home:' + dbId, JSON.stringify(rect));
+}
+
 /** 인코딩된 config 를 포함한 전체 보드 URL 생성 */
 export function buildShareUrl(config) {
   const encoded = encodeConfig(config);

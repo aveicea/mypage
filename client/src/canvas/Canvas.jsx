@@ -1,10 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
+import HomeFrame from './HomeFrame.jsx';
 
 /**
  * 무한 캔버스. 빈 공간 드래그로 패닝, 휠로 줌.
  * 자식(위젯 레이어)은 pan/zoom transform 이 적용된 .canvas-layer 안에 렌더링.
  */
-export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBackgroundClick, children }) {
+export default function Canvas({
+  viewport,
+  editMode,
+  panEnabled,
+  homeRect,
+  onHomeChange,
+  onHomeCommit,
+  onAddAt,
+  onBackgroundClick,
+  children,
+}) {
   const { pan, zoom, zoomAt, panBy, screenToWorld } = viewport;
   const rootRef = useRef(null);
   const panning = useRef(null);
@@ -12,14 +23,6 @@ export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBack
   const pinch = useRef(null); // { dist, cx, cy }
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
-  const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
-
-  // 리사이즈 시 "홈 프레임"(처음 화면 영역) 크기 갱신
-  useEffect(() => {
-    const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
 
   // 휠 줌은 passive:false 가 필요하므로 직접 리스너 등록
   useEffect(() => {
@@ -151,8 +154,14 @@ export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBack
         className="canvas-layer"
         style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
       >
-        {editMode && (
-          <div className="home-frame" style={{ left: 0, top: 0, width: size.w, height: size.h }} />
+        {homeRect && (
+          <HomeFrame
+            rect={homeRect}
+            editMode={editMode}
+            zoom={zoom}
+            onChange={onHomeChange}
+            onCommit={onHomeCommit}
+          />
         )}
         {children}
       </div>

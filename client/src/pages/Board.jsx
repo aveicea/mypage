@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { resolveConfig, getDeviceId } from '../config.js';
+import { resolveConfig, getDeviceId, loadHomeRect, saveHomeRect } from '../config.js';
 import { createApi } from '../api.js';
 import { useViewport } from '../canvas/useViewport.js';
 import { useWidgetSync } from '../hooks/useWidgetSync.js';
@@ -54,6 +54,19 @@ export default function Board() {
   const [selectedId, setSelectedId] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [guides, setGuides] = useState([]); // 이동 시 정렬 가이드
+  const [homeRect, setHomeRect] = useState(
+    () => loadHomeRect(config.databaseId) || { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight }
+  );
+  const homeRef = useRef(homeRect);
+  homeRef.current = homeRect;
+
+  // 첫 로드 시 홈 영역으로 맞춤 (한 번만)
+  const didFit = useRef(false);
+  useEffect(() => {
+    if (didFit.current) return;
+    didFit.current = true;
+    viewport.fitTo(homeRef.current);
+  }, [viewport]);
 
   // 패닝 가능 조건: 편집 모드이거나, 보기 모드에서 잠금 해제일 때
   const panEnabled = editMode || !locked;
@@ -123,6 +136,9 @@ export default function Board() {
         viewport={viewport}
         editMode={editMode}
         panEnabled={panEnabled}
+        homeRect={homeRect}
+        onHomeChange={setHomeRect}
+        onHomeCommit={() => saveHomeRect(config.databaseId, homeRef.current)}
         onAddAt={handleAdd}
         onBackgroundClick={() => setSelectedId(null)}
       >
@@ -183,7 +199,7 @@ export default function Board() {
           <button className="icon-btn" title="확대" onClick={() => viewport.zoomAt(innerWidth / 2, innerHeight / 2, 1.1)}>
             <PlusIcon />
           </button>
-          <button className="icon-btn" title="리셋" onClick={viewport.reset}>
+          <button className="icon-btn" title="리셋" onClick={() => viewport.fitTo(homeRect)}>
             <ResetIcon />
           </button>
         </div>
@@ -221,7 +237,7 @@ export default function Board() {
           </button>
         )}
         {!editMode && !locked && (
-          <button className="icon-btn" title="처음 화면으로" onClick={viewport.reset}>
+          <button className="icon-btn" title="처음 화면으로" onClick={() => viewport.fitTo(homeRect)}>
             <ResetIcon />
           </button>
         )}

@@ -428,15 +428,42 @@ button {
   padding: 1px 0;
 }
 
-/* 처음 화면에 보이는 영역 가이드 (편집 모드) */
+/* 처음 보일 영역 가이드 */
 .home-frame {
   position: absolute;
   border: 4px solid rgba(0, 0, 0, 0.4);
   box-sizing: border-box;
-  pointer-events: none;
+  pointer-events: none; /* 내부는 통과, 탭/핸들만 잡힘 */
   z-index: 0;
   border-radius: 4px;
 }
+.home-move {
+  position: absolute;
+  top: -26px;
+  left: -2px;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: move;
+  white-space: nowrap;
+  user-select: none;
+}
+.home-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  border-radius: 3px;
+  pointer-events: auto;
+}
+.h-nw { top: -7px; left: -7px; cursor: nwse-resize; }
+.h-se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+.h-ne { top: -7px; right: -7px; cursor: nesw-resize; }
+.h-sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
 
 /* 이동 시 정렬 스냅 가이드 */
 .snap-guide-v,
