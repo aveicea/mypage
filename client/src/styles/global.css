@@ -154,12 +154,16 @@ button {
 /* 위젯 상단 작은 툴바: 이동 핸들 + 삭제 (코너 핸들과 안 겹치게 위로) */
 .widget-toolbar {
   position: absolute;
-  top: -34px;
-  left: -2px;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 6px;
   display: flex;
-  gap: 2px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 3px;
   z-index: 5;
 }
+.wt-ext { display: inline-flex; align-items: flex-start; }
 
 .wt-btn {
   width: 26px;
@@ -630,19 +634,14 @@ button {
   display: block;
 }
 .embed-tools {
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   gap: 2px;
   align-items: center;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.97);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 3px 6px;
   box-shadow: var(--shadow);
-  z-index: 2;
   font-size: 12px;
 }
 .embed-tools button {
@@ -703,23 +702,41 @@ button {
   display: block;
   cursor: crosshair;
 }
-.draw-tools {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  right: 6px;
+.draw-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.draw-tools {
+  display: flex;
   gap: 3px;
   align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.97);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px 6px;
   box-shadow: var(--shadow);
-  z-index: 2;
 }
+.draw-popup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 7px;
+  box-shadow: var(--shadow);
+}
+.draw-wsel {
+  width: 24px; height: 24px;
+  border: none; background: transparent; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.draw-wsel.on { background: #e7efff; }
+.draw-wsel span { background: #333; border-radius: 50%; display: block; }
 .draw-sep { width: 1px; height: 16px; background: var(--border); margin: 0 3px; }
 .draw-label { font-size: 11px; color: #666; }
 .draw-opacity { display: inline-flex; align-items: center; gap: 1px; font-size: 11px; color: #555; }

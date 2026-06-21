@@ -1,7 +1,11 @@
-import { useRef } from 'react';
+import { createContext, useCallback, useRef, useState } from 'react';
 import { MoveIcon, TrashIcon } from './icons.jsx';
 
+// 위젯별 편집 도구를 테두리 바깥(외부 툴바)에 포털로 띄우기 위한 컨텍스트
+export const WidgetChromeContext = createContext({ host: null, selected: false, editMode: false });
+
 export const POSTIT_COLORS = ['#fff7c2', '#ffd6e0', '#d6f5d6', '#cfe8ff', '#e7d9ff', '#ffe0c2', '#eceff1'];
+export const DRAW_BG = ['#ffffff', '#fff7c2', '#d6f5d6', '#cfe8ff', '#111827'];
 
 /**
  * 위젯 공통 프레임.
@@ -85,6 +89,8 @@ export default function WidgetFrame({
 }) {
   const ref = useRef(null);
   const drag = useRef(null);
+  const [extHost, setExtHost] = useState(null);
+  const hostRef = useCallback((node) => setExtHost(node), []);
 
   function onPointerDown(e) {
     if (!editMode) return;
@@ -169,6 +175,7 @@ export default function WidgetFrame({
   }
 
   const isPostit = widget.type === 'postit';
+  const isDraw = widget.type === 'draw';
 
   return (
     <div
@@ -186,7 +193,11 @@ export default function WidgetFrame({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
     >
-      <div className="widget-body">{children}</div>
+      <div className="widget-body">
+        <WidgetChromeContext.Provider value={{ host: extHost, selected, editMode }}>
+          {children}
+        </WidgetChromeContext.Provider>
+      </div>
 
       {editMode && selected && (
         <>
@@ -220,6 +231,36 @@ export default function WidgetFrame({
                   }}
                 />
               ))}
+
+            {isDraw && (
+              <>
+                {DRAW_BG.map((c) => (
+                  <button
+                    key={c}
+                    className="wt-swatch"
+                    title="배경색"
+                    style={{ background: c }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onChange({ content: { ...widget.content, bg: c } }, { commit: true });
+                    }}
+                  />
+                ))}
+                <button
+                  className="wt-swatch wt-transparent"
+                  title="투명 배경"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange({ content: { ...widget.content, bg: 'transparent' } }, { commit: true });
+                  }}
+                />
+              </>
+            )}
+
+            {/* 위젯별 도구(임베드 %, 그림 도구 등)가 포털로 들어오는 자리 */}
+            <span className="wt-ext" ref={hostRef} />
           </div>
 
           {['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((dir) => (
