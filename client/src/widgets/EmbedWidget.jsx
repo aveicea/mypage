@@ -23,7 +23,7 @@ function toEmbedUrl(raw) {
 const clampZoom = (z) => Math.min(3, Math.max(0.25, Math.round(z * 100) / 100));
 
 export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
-  const { host } = useContext(WidgetChromeContext);
+  const { host, selected, editMode: ctxEdit } = useContext(WidgetChromeContext);
   const content = widget.content || {};
   const url = content.url || '';
   // 확대 배율은 기기별로 저장 (없으면 공통 zoom, 그래도 없으면 1)
@@ -71,7 +71,7 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
 
   return (
     <div className="w-embed" onDoubleClick={() => editMode && setUrl()}>
-      {host && createPortal(tools, host)}
+      {ctxEdit && selected && host && createPortal(tools, host)}
       <iframe
         src={toEmbedUrl(url)}
         title={widget.id}

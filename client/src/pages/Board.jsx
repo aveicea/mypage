@@ -69,6 +69,7 @@ export default function Board() {
   const viewsRef = useRef(views);
   viewsRef.current = views;
   const [activeView, setActiveView] = useState(null); // 칩으로 띄운 편집용 뷰 프레임
+  const [autoEditId, setAutoEditId] = useState(null); // 추가 직후 자동 편집할 위젯
 
   function captureRect() {
     const z = viewport.zoom;
@@ -150,6 +151,7 @@ export default function Board() {
     const created = await addWidget(widget);
     if (created) setSelectedId(created.id);
     setMenuOpen(false);
+    return created;
   }
 
   function renderWidgetContent(w) {
@@ -166,6 +168,8 @@ export default function Board() {
       onJumpTo: (rect) => viewport.fitTo(rect),
       getCurrentRect: captureRect,
       savedViews: views,
+      autoEdit: autoEditId === w.id,
+      onAutoEdited: () => setAutoEditId(null),
       onChange: (patch, opts) => updateWidget(w.id, patch, opts),
     };
     switch (w.type) {
@@ -195,9 +199,9 @@ export default function Board() {
         onViewFrameChange={(rect) => setViews((vs) => vs.map((v) => (v.id === activeView ? { ...v, rect } : v)))}
         onViewFrameCommit={() => saveViews(config.databaseId, viewsRef.current)}
         onAddAt={handleAdd}
-        onQuickAdd={(world) => {
-          setEditMode(true);
-          handleAdd('text', world);
+        onQuickAdd={async (world) => {
+          const w = await handleAdd('text', world);
+          if (w) setAutoEditId(w.id); // 편집모드 전환 없이 그 위젯만 편집 시작
         }}
         onBackgroundClick={() => setSelectedId(null)}
       >

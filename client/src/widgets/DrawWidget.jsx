@@ -176,9 +176,7 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
       style={{ background }}
       onDoubleClick={() => { if (!inEdit) startSession(); }}
     >
-      {inEdit && host
-        ? createPortal(bar, host)
-        : drawing && <div className="draw-bar-float">{bar}</div>}
+      {(inEdit || drawing) && host && createPortal(bar, host)}
       <svg
         ref={svgRef}
         viewBox="0 0 1 1"

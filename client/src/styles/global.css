@@ -152,16 +152,22 @@ button {
 .r-e { right: -10px; }
 
 /* 위젯 상단 작은 툴바: 이동 핸들 + 삭제 (코너 핸들과 안 겹치게 위로) */
-.widget-toolbar {
+.widget-ext {
   position: absolute;
   bottom: 100%;
   left: 0;
   margin-bottom: 6px;
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  z-index: 5;
+}
+.widget-toolbar {
+  display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 3px;
-  z-index: 5;
 }
 .wt-ext { display: inline-flex; align-items: flex-start; }
 
@@ -662,21 +668,16 @@ button {
 
 /* 뷰 버튼 위젯 */
 .w-viewbtn {
-  width: 100%;
-  height: 100%;
-  display: flex;
+  display: inline-flex;
 }
 .vb-main {
-  flex: 1;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: transparent;
   color: var(--text);
   font-size: 13px;
   cursor: pointer;
-  padding: 2px 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 3px 10px;
   white-space: nowrap;
 }
 .vb-main:hover { border-color: var(--accent); color: var(--accent); }

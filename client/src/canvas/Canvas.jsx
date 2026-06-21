@@ -185,20 +185,22 @@ export default function Canvas({
         className="canvas-layer"
         style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
       >
-        {homeRect && (
+        {editMode && homeRect && (
           <HomeFrame
             rect={homeRect}
             editMode={editMode}
             zoom={zoom}
+            aspect={window.innerWidth / window.innerHeight}
             onChange={onHomeChange}
             onCommit={onHomeCommit}
           />
         )}
-        {viewFrame && (
+        {editMode && viewFrame && (
           <HomeFrame
             rect={viewFrame}
             editMode={editMode}
             zoom={zoom}
+            aspect={window.innerWidth / window.innerHeight}
             tone="light"
             label="뷰 영역"
             onChange={onViewFrameChange}

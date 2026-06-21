@@ -199,8 +199,8 @@ export default function WidgetFrame({
         </WidgetChromeContext.Provider>
       </div>
 
-      {editMode && selected && (
-        <>
+      <div className="widget-ext">
+        {editMode && selected && (
           <div className="widget-toolbar">
             <button className="wt-btn wt-move" title="이동" onPointerDown={startMove}>
               <MoveIcon />
@@ -259,19 +259,20 @@ export default function WidgetFrame({
               </>
             )}
 
-            {/* 위젯별 도구(임베드 %, 그림 도구 등)가 포털로 들어오는 자리 */}
-            <span className="wt-ext" ref={hostRef} />
           </div>
+        )}
+        {/* 위젯별 도구(임베드 %, 그림 도구 등)가 포털로 들어오는 자리 — 항상 존재 */}
+        <span className="wt-ext" ref={hostRef} />
+      </div>
 
-          {['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((dir) => (
-            <div
-              key={dir}
-              className={`widget-resize r-${dir}`}
-              onPointerDown={(e) => startResize(e, dir)}
-            />
-          ))}
-        </>
-      )}
+      {editMode && selected &&
+        ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((dir) => (
+          <div
+            key={dir}
+            className={`widget-resize r-${dir}`}
+            onPointerDown={(e) => startResize(e, dir)}
+          />
+        ))}
     </div>
   );
 }

@@ -32,7 +32,7 @@ function serialize(rows) {
     .join('\n');
 }
 
-export default function TextWidget({ widget, editMode, onChange }) {
+export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, onChange }) {
   const text = widget.content?.text ?? '';
   const [editing, setEditing] = useState(false);
   const [rows, setRows] = useState([]);
@@ -59,6 +59,15 @@ export default function TextWidget({ widget, editMode, onChange }) {
     setEditing(true);
     pendingFocus.current = { index: rs.length - 1, caret: rs[rs.length - 1].text.length };
   }
+
+  // 추가 직후 자동 편집 시작 (편집모드 전환 없이 이 위젯만)
+  useEffect(() => {
+    if (autoEdit) {
+      startEditing();
+      onAutoEdited?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoEdit]);
 
   function commitEditing(rs) {
     setEditing(false);
