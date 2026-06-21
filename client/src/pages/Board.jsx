@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { resolveConfig } from '../config.js';
+import { resolveConfig, getDeviceId } from '../config.js';
 import { createApi } from '../api.js';
 import { useViewport } from '../canvas/useViewport.js';
 import { useWidgetSync } from '../hooks/useWidgetSync.js';
@@ -45,8 +45,9 @@ export default function Board() {
   }
 
   const api = useMemo(() => createApi(config), [config]);
+  const deviceId = useMemo(() => getDeviceId(), []);
   const viewport = useViewport();
-  const { widgets, status, error, updateWidget, addWidget, removeWidget } = useWidgetSync(api);
+  const { widgets, status, error, updateWidget, addWidget, removeWidget } = useWidgetSync(api, deviceId);
 
   const [editMode, setEditMode] = useState(false); // ✏️ 항상 보기 모드로 시작
   const [locked, setLocked] = useState(true); // 🔒 기본은 화면 완전 고정
