@@ -83,6 +83,7 @@ export default function WidgetFrame({
   onSelect,
   onChange,
   onDelete,
+  onDragStart,
   others = [],
   setGuides,
   children,
@@ -103,6 +104,7 @@ export default function WidgetFrame({
   function startMove(e) {
     e.stopPropagation();
     onSelect?.(widget.id);
+    onDragStart?.();
     drag.current = {
       mode: 'move',
       sx: e.clientX,
@@ -117,6 +119,7 @@ export default function WidgetFrame({
   function startResize(e, dir) {
     e.stopPropagation();
     onSelect?.(widget.id);
+    onDragStart?.();
     drag.current = {
       mode: 'resize',
       dir,

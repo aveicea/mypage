@@ -70,6 +70,11 @@ export default function Board() {
   viewsRef.current = views;
   const [activeView, setActiveView] = useState(null); // 칩으로 띄운 편집용 뷰 프레임
   const [autoEditId, setAutoEditId] = useState(null); // 추가 직후 자동 편집할 위젯
+  const undoStack = useRef([]); // 되돌리기 (추가/삭제/이동/리사이즈)
+  const pushUndo = (entry) => {
+    undoStack.current.push(entry);
+    if (undoStack.current.length > 50) undoStack.current.shift();
+  };
 
   function captureRect() {
     const z = viewport.zoom;
@@ -91,6 +96,40 @@ export default function Board() {
     const next = views.filter((v) => v.id !== id);
     setViews(next);
     saveViews(config.databaseId, next);
+  }
+
+  // 홈 프레임: 이동하면 그 위치를 기준으로 모든 위젯 재배치(프레임은 원점 유지),
+  // 리사이즈(비율 고정)는 보이는 영역(줌)만 변경
+  function handleHomeCommit(mode) {
+    const r = homeRef.current;
+    if (mode === 'move' && (Math.abs(r.x) > 0.5 || Math.abs(r.y) > 0.5)) {
+      widgets.forEach((w) => updateWidget(w.id, { x: w.x - r.x, y: w.y - r.y }, { commit: true }));
+      const reset = { x: 0, y: 0, width: r.width, height: r.height };
+      setHomeRect(reset);
+      saveHomeRect(config.databaseId, reset);
+    } else {
+      saveHomeRect(config.databaseId, r);
+    }
+  }
+
+  // 삭제(되돌리기 가능)
+  function boardRemove(id) {
+    const w = widgets.find((x) => x.id === id);
+    if (w) pushUndo({ kind: 'delete', widget: { ...w } });
+    removeWidget(id);
+    if (selectedId === id) setSelectedId(null);
+  }
+
+  function doUndo() {
+    const e = undoStack.current.pop();
+    if (!e) return;
+    if (e.kind === 'geom') {
+      updateWidget(e.id, { x: e.x, y: e.y, width: e.width, height: e.height }, { commit: true });
+    } else if (e.kind === 'add') {
+      removeWidget(e.id);
+    } else if (e.kind === 'delete') {
+      addWidget(e.widget);
+    }
   }
 
   // 첫 로드 시 홈 영역으로 맞춤 (한 번만)
@@ -116,16 +155,21 @@ export default function Board() {
         setMenuOpen(false);
         return;
       }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !typing) {
+        e.preventDefault();
+        doUndo();
+        return;
+      }
       if (typing) return;
       if (editMode && selectedId && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
-        removeWidget(selectedId);
-        setSelectedId(null);
+        boardRemove(selectedId);
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editMode, selectedId, removeWidget]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode, selectedId, widgets]);
 
   function selectWidget(id) {
     setSelectedId(id);
@@ -149,7 +193,10 @@ export default function Board() {
       content,
     };
     const created = await addWidget(widget);
-    if (created) setSelectedId(created.id);
+    if (created) {
+      setSelectedId(created.id);
+      pushUndo({ kind: 'add', id: created.id });
+    }
     setMenuOpen(false);
     return created;
   }
@@ -194,7 +241,7 @@ export default function Board() {
         zoomEnabled={zoomEnabled}
         homeRect={homeRect}
         onHomeChange={setHomeRect}
-        onHomeCommit={() => saveHomeRect(config.databaseId, homeRef.current)}
+        onHomeCommit={handleHomeCommit}
         viewFrame={editMode && activeView ? (views.find((v) => v.id === activeView)?.rect || null) : null}
         onViewFrameChange={(rect) => setViews((vs) => vs.map((v) => (v.id === activeView ? { ...v, rect } : v)))}
         onViewFrameCommit={() => saveViews(config.databaseId, viewsRef.current)}
@@ -214,10 +261,8 @@ export default function Board() {
             selected={editMode && selectedId === w.id}
             onSelect={selectWidget}
             onChange={(patch, opts) => updateWidget(w.id, patch, opts)}
-            onDelete={(id) => {
-              removeWidget(id);
-              if (selectedId === id) setSelectedId(null);
-            }}
+            onDragStart={() => pushUndo({ kind: 'geom', id: w.id, x: w.x, y: w.y, width: w.width, height: w.height })}
+            onDelete={(id) => boardRemove(id)}
             others={editMode ? widgets.filter((x) => x.id !== w.id) : []}
             setGuides={setGuides}
           >

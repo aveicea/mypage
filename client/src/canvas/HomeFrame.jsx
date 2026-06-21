@@ -41,8 +41,9 @@ export default function HomeFrame({ rect, editMode, zoom, aspect = 16 / 9, onCha
   }
   function onUp() {
     if (drag.current) {
+      const mode = drag.current.mode;
       drag.current = null;
-      onCommit?.();
+      onCommit?.(mode);
     }
   }
 
