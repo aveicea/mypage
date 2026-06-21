@@ -81,10 +81,16 @@ button {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
-/* 임베드/이미지는 본문 스크롤바 없이 콘텐츠만 꽉 채움 */
+/* 임베드/이미지/그림은 본문 스크롤바 없이 콘텐츠만 꽉 채움 */
 .widget--embed .widget-body,
-.widget--image .widget-body {
+.widget--image .widget-body,
+.widget--draw .widget-body {
   overflow: hidden;
+}
+
+/* 그림 위젯은 흰 도화지 배경 */
+.widget--draw {
+  background: #fff;
 }
 
 .widget.selected {
@@ -537,6 +543,54 @@ button {
   border: none;
   display: block;
 }
+
+/* 그림 위젯 */
+.w-draw {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.w-draw svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+.draw-tools {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 6px;
+  box-shadow: var(--shadow);
+  z-index: 2;
+}
+.draw-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 0;
+  cursor: pointer;
+}
+.draw-swatch.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.draw-w {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.draw-w:hover { background: #eef0f3; }
 
 .w-gh {
   padding: 12px;

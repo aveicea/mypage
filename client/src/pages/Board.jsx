@@ -12,6 +12,7 @@ import ImageWidget from '../widgets/ImageWidget.jsx';
 import LinkWidget from '../widgets/LinkWidget.jsx';
 import EmbedWidget from '../widgets/EmbedWidget.jsx';
 import GithubWidget from '../widgets/GithubWidget.jsx';
+import DrawWidget from '../widgets/DrawWidget.jsx';
 import {
   PencilIcon, LockClosedIcon, LockOpenIcon, GearIcon,
   PlusIcon, MinusIcon, ResetIcon,
@@ -24,6 +25,7 @@ const DEFAULTS = {
   link: { width: 280, height: 220, content: { url: '' } },
   embed: { width: 360, height: 240, content: { url: '' } },
   github: { width: 320, height: 200, content: { url: '' } },
+  draw: { width: 300, height: 220, content: { strokes: [] } },
 };
 
 const ADD_TYPES = [
@@ -33,6 +35,7 @@ const ADD_TYPES = [
   ['link', '링크 카드'],
   ['embed', '임베드'],
   ['github', '깃허브 카드'],
+  ['draw', '그림'],
 ];
 
 export default function Board() {
@@ -124,6 +127,7 @@ export default function Board() {
       case 'link': return <LinkWidget {...common} />;
       case 'embed': return <EmbedWidget {...common} />;
       case 'github': return <GithubWidget {...common} />;
+      case 'draw': return <DrawWidget {...common} />;
       case 'postit':
       case 'text':
       default: return <TextWidget {...common} />;

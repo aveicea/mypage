@@ -147,6 +147,7 @@ export default function Canvas({
     ['link', '링크 카드'],
     ['embed', '임베드'],
     ['github', '깃허브 카드'],
+    ['draw', '그림'],
   ];
 
   return (
