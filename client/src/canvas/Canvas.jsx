@@ -18,6 +18,7 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
     const el = rootRef.current;
     if (!el) return;
     const onWheel = (e) => {
+      if (!editMode) return; // 보기 모드: 줌 안 함 (위젯 내부 스크롤 허용)
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       const sx = e.clientX - rect.left;
@@ -27,7 +28,7 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [zoomAt]);
+  }, [zoomAt, editMode]);
 
   function dist(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
@@ -45,8 +46,8 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    if (pointers.current.size === 2) {
-      // 두 손가락 → 핀치 시작, 패닝 중단
+    if (pointers.current.size === 2 && editMode) {
+      // 두 손가락 → 핀치 줌 (편집 모드에서만), 패닝 중단
       panning.current = null;
       const [a, b] = [...pointers.current.values()];
       pinch.current = { dist: dist(a, b), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };

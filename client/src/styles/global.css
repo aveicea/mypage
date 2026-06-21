@@ -69,9 +69,15 @@ button {
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: var(--shadow);
-  overflow: hidden;
+  /* 바깥에 떠 있는 삭제 버튼/리사이즈 핸들이 잘리지 않도록 visible */
+  overflow: visible;
   display: flex;
   flex-direction: column;
+}
+
+/* 임베드는 카드 흰 배경 없이 콘텐츠만 보이게 */
+.widget--embed {
+  background: transparent;
 }
 
 .widget.selected {
@@ -100,6 +106,8 @@ button {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* 둥근 모서리 안쪽으로 콘텐츠 클리핑 */
+  border-radius: 9px;
 }
 
 .widget-resize {

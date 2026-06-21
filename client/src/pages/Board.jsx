@@ -133,13 +133,15 @@ export default function Board() {
         </div>
       )}
 
-      {/* 좌하단: 줌 컨트롤 */}
-      <div className="zoom-controls">
-        <button onClick={() => viewport.zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1 / 1.1)}>−</button>
-        <span>{Math.round(viewport.zoom * 100)}%</span>
-        <button onClick={() => viewport.zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1.1)}>＋</button>
-        <button onClick={viewport.reset} title="리셋">⟳</button>
-      </div>
+      {/* 좌하단: 줌 컨트롤 (편집 모드에서만) */}
+      {editMode && (
+        <div className="zoom-controls">
+          <button onClick={() => viewport.zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1 / 1.1)}>−</button>
+          <span>{Math.round(viewport.zoom * 100)}%</span>
+          <button onClick={() => viewport.zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1.1)}>＋</button>
+          <button onClick={viewport.reset} title="리셋">⟳</button>
+        </div>
+      )}
 
       {/* 우하단: 편집 모드 토글 + API 설정 */}
       <div className="bottom-right">

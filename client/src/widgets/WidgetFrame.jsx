@@ -102,7 +102,7 @@ export default function WidgetFrame({
   return (
     <div
       ref={ref}
-      className={`widget ${editMode ? 'edit' : ''} ${selected ? 'selected' : ''}`}
+      className={`widget widget--${widget.type} ${editMode ? 'edit' : ''} ${selected ? 'selected' : ''}`}
       style={{
         left: widget.x,
         top: widget.y,
