@@ -222,7 +222,7 @@ export default function Board() {
         </div>
       )}
 
-      {/* 좌하단: 편집 / 잠금 / 리셋 */}
+      {/* 좌하단: 편집 / (줄바꿈) 잠금 · 리셋 */}
       <div className="bottom-left">
         <button
           className={`icon-btn ${editMode ? 'active' : ''}`}
@@ -235,7 +235,7 @@ export default function Board() {
         >
           <PencilIcon />
         </button>
-        {!editMode && (
+        <div className="bl-row">
           <button
             className="icon-btn"
             title={locked ? '잠금됨 (탭하여 스크롤 허용)' : '스크롤 허용됨 (탭하여 고정)'}
@@ -243,12 +243,10 @@ export default function Board() {
           >
             {locked ? <LockClosedIcon /> : <LockOpenIcon />}
           </button>
-        )}
-        {!editMode && !locked && (
           <button className="icon-btn" title="처음 화면으로" onClick={() => viewport.fitTo(homeRect)}>
             <ResetIcon />
           </button>
-        )}
+        </div>
       </div>
 
       {status === 'loading' && <div className="toast">Notion 에서 불러오는 중…</div>}
