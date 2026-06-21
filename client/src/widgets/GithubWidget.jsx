@@ -35,7 +35,7 @@ export default function GithubWidget({ widget, editMode, api, onChange }) {
   // API 실패 시 단순 링크 카드로 폴백
   if (failed) {
     return (
-      <a className="w-card" href={url} target="_blank" rel="noreferrer" onDoubleClick={() => editMode && setUrl()}>
+      <a className="w-card" href={url} target="_blank" rel="noreferrer" onClick={(e) => editMode && e.preventDefault()} onDoubleClick={() => editMode && setUrl()}>
         <div className="w-card-body">
           <div className="w-card-title">GitHub</div>
           <div className="w-card-desc">{url}</div>
@@ -90,7 +90,13 @@ export default function GithubWidget({ widget, editMode, api, onChange }) {
         </>
       )}
 
-      <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--accent)' }}>
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => editMode && e.preventDefault()}
+        style={{ fontSize: 12, color: 'var(--accent)' }}
+      >
         GitHub에서 열기 →
       </a>
     </div>

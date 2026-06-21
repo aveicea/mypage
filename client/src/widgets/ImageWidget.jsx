@@ -1,8 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
-export default function ImageWidget({ widget, editMode, onChange }) {
+export default function ImageWidget({ widget, editMode, api, onChange }) {
   const src = widget.content?.src || '';
   const fileRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
 
   function setUrl() {
     const url = window.prompt('이미지 URL 입력', src);
@@ -12,12 +13,29 @@ export default function ImageWidget({ widget, editMode, onChange }) {
   function onFile(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploading(true);
     const reader = new FileReader();
-    reader.onload = () => {
-      // dataURL 로 인코딩해 Content JSON 에 저장 (노션 rich_text 2000자 제한 주의)
-      onChange({ content: { ...widget.content, src: reader.result } }, { commit: true });
+    reader.onload = async () => {
+      const base64 = String(reader.result).split(',')[1];
+      try {
+        // Notion Files 속성에 실제 업로드 → 기기 간 동기화됨
+        const { widget: updated } = await api.uploadImage(widget.id, {
+          filename: file.name,
+          contentType: file.type,
+          dataBase64: base64,
+        });
+        onChange({ content: { ...widget.content, src: updated.content?.src || '' } });
+      } catch (err) {
+        alert('이미지 업로드 실패: ' + err.message);
+      } finally {
+        setUploading(false);
+      }
     };
     reader.readAsDataURL(file);
+  }
+
+  if (uploading) {
+    return <div className="w-placeholder">업로드 중…</div>;
   }
 
   if (!src) {
@@ -37,12 +55,15 @@ export default function ImageWidget({ widget, editMode, onChange }) {
   }
 
   return (
-    <img
-      className="w-image"
-      src={src}
-      alt=""
-      onDoubleClick={() => editMode && setUrl()}
-      draggable={false}
-    />
+    <>
+      <img
+        className="w-image"
+        src={src}
+        alt=""
+        onDoubleClick={() => editMode && fileRef.current?.click()}
+        draggable={false}
+      />
+      <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
+    </>
   );
 }

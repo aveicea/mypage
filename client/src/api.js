@@ -51,6 +51,13 @@ export function createApi(config) {
         headers: headers(config),
       }).then(handle),
 
+    uploadImage: (id, payload) =>
+      fetch(`/api/widgets/${id}/image`, {
+        method: 'POST',
+        headers: headers(config),
+        body: JSON.stringify(payload),
+      }).then(handle),
+
     og: (url) =>
       fetch(`/api/meta/og?url=${encodeURIComponent(url)}`, { headers: headers(config) }).then(handle),
 

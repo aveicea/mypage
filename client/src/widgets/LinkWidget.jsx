@@ -37,6 +37,9 @@ export default function LinkWidget({ widget, editMode, api, onChange }) {
       href={url}
       target="_blank"
       rel="noreferrer"
+      onClick={(e) => {
+        if (editMode) e.preventDefault();
+      }}
       onDoubleClick={(e) => {
         if (editMode) {
           e.preventDefault();

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
  * 무한 캔버스. 빈 공간 드래그로 패닝, 휠로 줌.
  * 자식(위젯 레이어)은 pan/zoom transform 이 적용된 .canvas-layer 안에 렌더링.
  */
-export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick, children }) {
+export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBackgroundClick, children }) {
   const { pan, zoom, zoomAt, panBy, screenToWorld } = viewport;
   const rootRef = useRef(null);
   const panning = useRef(null);
@@ -12,22 +12,36 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
   const pinch = useRef(null); // { dist, cx, cy }
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
+  const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+
+  // 리사이즈 시 "홈 프레임"(처음 화면 영역) 크기 갱신
+  useEffect(() => {
+    const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // 휠 줌은 passive:false 가 필요하므로 직접 리스너 등록
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
     const onWheel = (e) => {
-      e.preventDefault();
-      const rect = el.getBoundingClientRect();
-      const sx = e.clientX - rect.left;
-      const sy = e.clientY - rect.top;
-      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-      zoomAt(sx, sy, factor);
+      if (editMode) {
+        // 편집 모드: 휠 = 확대/축소
+        e.preventDefault();
+        const rect = el.getBoundingClientRect();
+        const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+        zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
+      } else if (panEnabled) {
+        // 잠금 해제 보기: 휠 = 스크롤(이동), 확대는 안 함
+        e.preventDefault();
+        panBy(-e.deltaX, -e.deltaY);
+      }
+      // 잠금 보기: 아무것도 안 함 (완전 고정)
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [zoomAt]);
+  }, [zoomAt, panBy, editMode, panEnabled]);
 
   function dist(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
@@ -40,13 +54,18 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
   function onPointerDown(e) {
     if (menu) setMenu(null);
     if (!isBackground(e)) return;
+    if (e.button === 0 || e.pointerType !== 'mouse') {
+      // 배경 빈 곳 클릭 = 선택 해제
+      onBackgroundClick?.();
+    }
+    if (!panEnabled) return; // 잠금 보기: 패닝 안 함
     if (e.pointerType === 'mouse' && e.button !== 0) return; // 좌클릭만 패닝
 
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    if (pointers.current.size === 2) {
-      // 두 손가락 → 핀치 시작, 패닝 중단
+    if (pointers.current.size === 2 && editMode) {
+      // 두 손가락 → 핀치 줌 (편집 모드에서만), 패닝 중단
       panning.current = null;
       const [a, b] = [...pointers.current.values()];
       pinch.current = { dist: dist(a, b), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
@@ -89,12 +108,8 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
     pointers.current.delete(e.pointerId);
     if (pointers.current.size < 2) pinch.current = null;
 
-    const wasPanning = panning.current;
     panning.current = null;
     setGrabbing(false);
-    if (wasPanning && !wasPanning.moved && isBackground(e)) {
-      onBackgroundClick?.();
-    }
   }
 
   function onContextMenu(e) {
@@ -127,6 +142,9 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
         className="canvas-layer"
         style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
       >
+        {editMode && (
+          <div className="home-frame" style={{ left: 0, top: 0, width: size.w, height: size.h }} />
+        )}
         {children}
       </div>
 
