@@ -9,6 +9,32 @@ export const POSTIT_COLORS = ['#fff7c2', '#ffd6e0', '#d6f5d6', '#cfe8ff', '#e7d9
  *   모서리/변 핸들로 리사이즈, 툴바의 휴지통으로 삭제.
  * 본문 클릭 = 선택. 보기 모드: 이동/리사이즈 불가, 본문 상호작용만.
  */
+/** 이동 중 다른 위젯들의 모서리/중심에 맞춰 스냅 + 가이드 좌표 계산 */
+function computeSnap(x, y, w, h, others, thr) {
+  const selfX = [x, x + w / 2, x + w];
+  const selfY = [y, y + h / 2, y + h];
+  let bestX = Infinity, dx = 0, gx = null;
+  let bestY = Infinity, dy = 0, gy = null;
+  for (const o of others) {
+    const ox = [o.x, o.x + o.width / 2, o.x + o.width];
+    const oy = [o.y, o.y + o.height / 2, o.y + o.height];
+    for (const s of selfX) for (const t of ox) {
+      const d = Math.abs(t - s);
+      if (d < bestX) { bestX = d; dx = t - s; gx = t; }
+    }
+    for (const s of selfY) for (const t of oy) {
+      const d = Math.abs(t - s);
+      if (d < bestY) { bestY = d; dy = t - s; gy = t; }
+    }
+  }
+  const hasX = bestX <= thr;
+  const hasY = bestY <= thr;
+  const guides = [];
+  if (hasX) guides.push({ axis: 'x', at: gx });
+  if (hasY) guides.push({ axis: 'y', at: gy });
+  return { x: hasX ? x + dx : x, y: hasY ? y + dy : y, guides };
+}
+
 export default function WidgetFrame({
   widget,
   zoom,
@@ -17,6 +43,8 @@ export default function WidgetFrame({
   onSelect,
   onChange,
   onDelete,
+  others = [],
+  setGuides,
   children,
 }) {
   const ref = useRef(null);
@@ -69,7 +97,9 @@ export default function WidgetFrame({
 
     if (d.mode === 'move') {
       d.moved = true;
-      onChange({ x: d.ox + dx, y: d.oy + dy });
+      const snapped = computeSnap(d.ox + dx, d.oy + dy, widget.width, widget.height, others, 6 / zoom);
+      setGuides?.(snapped.guides);
+      onChange({ x: snapped.x, y: snapped.y });
       return;
     }
 
@@ -92,6 +122,7 @@ export default function WidgetFrame({
   function onPointerUp() {
     const d = drag.current;
     drag.current = null;
+    setGuides?.([]);
     if (d && d.moved) onChange({}, { commit: true });
   }
 

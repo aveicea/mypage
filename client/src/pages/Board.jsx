@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { resolveConfig } from '../config.js';
@@ -52,10 +52,32 @@ export default function Board() {
   const [locked, setLocked] = useState(true); // 🔒 기본은 화면 완전 고정
   const [selectedId, setSelectedId] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [guides, setGuides] = useState([]); // 이동 시 정렬 가이드
 
   // 패닝 가능 조건: 편집 모드이거나, 보기 모드에서 잠금 해제일 때
   const panEnabled = editMode || !locked;
   const maxZ = widgets.reduce((m, w) => Math.max(m, w.zIndex || 1), 1);
+
+  // 단축키
+  useEffect(() => {
+    function onKey(e) {
+      const tag = e.target.tagName;
+      const typing = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
+      if (e.key === 'Escape') {
+        setSelectedId(null);
+        setMenuOpen(false);
+        return;
+      }
+      if (typing) return;
+      if (editMode && selectedId && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault();
+        removeWidget(selectedId);
+        setSelectedId(null);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editMode, selectedId, removeWidget]);
 
   function selectWidget(id) {
     setSelectedId(id);
@@ -116,10 +138,20 @@ export default function Board() {
               removeWidget(id);
               if (selectedId === id) setSelectedId(null);
             }}
+            others={editMode ? widgets.filter((x) => x.id !== w.id) : []}
+            setGuides={setGuides}
           >
             {renderWidgetContent(w)}
           </WidgetFrame>
         ))}
+
+        {guides.map((g, i) =>
+          g.axis === 'x' ? (
+            <div key={`g${i}`} className="snap-guide-v" style={{ left: g.at }} />
+          ) : (
+            <div key={`g${i}`} className="snap-guide-h" style={{ top: g.at }} />
+          )
+        )}
       </Canvas>
 
       {/* 좌상단: 위젯 추가 (편집 모드에서만) */}
@@ -140,7 +172,7 @@ export default function Board() {
         </div>
       )}
 
-      {/* 좌하단: 줌 컨트롤 (편집 모드에서만) */}
+      {/* 우하단: 줌 컨트롤 (편집 모드에서만) */}
       {editMode && (
         <div className="zoom-controls">
           <button className="icon-btn" title="축소" onClick={() => viewport.zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.1)}>
@@ -156,8 +188,8 @@ export default function Board() {
         </div>
       )}
 
-      {/* 우하단: 잠금 / 설정 / 편집 토글 */}
-      <div className="bottom-right">
+      {/* 좌하단: 잠금 / 설정 / 편집 토글 */}
+      <div className="bottom-left">
         {!editMode && (
           <button
             className="icon-btn"

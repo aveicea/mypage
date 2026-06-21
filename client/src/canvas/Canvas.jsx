@@ -12,6 +12,14 @@ export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBack
   const pinch = useRef(null); // { dist, cx, cy }
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
+  const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+
+  // 리사이즈 시 "홈 프레임"(처음 화면 영역) 크기 갱신
+  useEffect(() => {
+    const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // 휠 줌은 passive:false 가 필요하므로 직접 리스너 등록
   useEffect(() => {
@@ -134,6 +142,9 @@ export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBack
         className="canvas-layer"
         style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
       >
+        {editMode && (
+          <div className="home-frame" style={{ left: 0, top: 0, width: size.w, height: size.h }} />
+        )}
         {children}
       </div>
 

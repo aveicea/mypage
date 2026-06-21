@@ -8,6 +8,8 @@ function inlineMd(s) {
     .replace(/>/g, '&gt;');
   return esc
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+    .replace(/\+\+([^+]+)\+\+/g, '<u>$1</u>')
     .replace(/\*([^*]+)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
@@ -20,6 +22,7 @@ export default function TextWidget({ widget, editMode, onChange }) {
   const text = widget.content?.text ?? '';
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text);
+  const [sel, setSel] = useState({ s: 0, e: 0 });
   const taRef = useRef(null);
 
   useEffect(() => {
@@ -48,14 +51,74 @@ export default function TextWidget({ widget, editMode, onChange }) {
     onChange({ content: { ...widget.content, text: lines.join('\n') } }, { commit: true });
   }
 
-  if (editing && editMode) {
+  /* ----- 편집 중 서식 적용 ----- */
+  function applyWrap(pre, suf = pre) {
+    const ta = taRef.current;
+    if (!ta) return;
+    const s = ta.selectionStart;
+    const e = ta.selectionEnd;
+    const next = draft.slice(0, s) + pre + draft.slice(s, e) + suf + draft.slice(e);
+    setDraft(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(s + pre.length, e + pre.length);
+    });
+  }
+
+  function applyLinePrefix(prefix) {
+    const ta = taRef.current;
+    if (!ta) return;
+    const s = ta.selectionStart;
+    const e = ta.selectionEnd;
+    const lineStart = draft.lastIndexOf('\n', s - 1) + 1;
+    const next = draft.slice(0, lineStart) + prefix + draft.slice(lineStart);
+    setDraft(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(s + prefix.length, e + prefix.length);
+    });
+  }
+
+  function onKeyDown(e) {
+    const mod = e.metaKey || e.ctrlKey;
+    const k = e.key.toLowerCase();
+    if (mod && k === 'b') { e.preventDefault(); applyWrap('**'); }
+    else if (mod && k === 'i') { e.preventDefault(); applyWrap('*'); }
+    else if (mod && k === 'u') { e.preventDefault(); applyWrap('++'); }
+    else if (mod && e.shiftKey && k === 'x') { e.preventDefault(); applyWrap('~~'); }
+    else if (mod && k === 'e') { e.preventDefault(); applyWrap('`'); }
+    else if (mod && e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+    else if (e.key === 'Escape') { e.currentTarget.blur(); }
+  }
+
+  function syncSel(e) {
+    setSel({ s: e.currentTarget.selectionStart, e: e.currentTarget.selectionEnd });
+  }
+
+  if (editing) {
+    const showBar = sel.e > sel.s;
     return (
-      <div className="w-text">
+      <div className="w-text w-editing">
+        {showBar && (
+          <div className="fmt-bar" onMouseDown={(e) => e.preventDefault()}>
+            <button onClick={() => applyWrap('**')} title="굵게"><b>B</b></button>
+            <button onClick={() => applyWrap('*')} title="기울임"><i>I</i></button>
+            <button onClick={() => applyWrap('++')} title="밑줄"><u>U</u></button>
+            <button onClick={() => applyWrap('~~')} title="취소선"><s>S</s></button>
+            <button onClick={() => applyWrap('`')} title="코드">{'</>'}</button>
+            <button onClick={() => applyLinePrefix('# ')} title="제목">H</button>
+            <button onClick={() => applyLinePrefix('- [ ] ')} title="체크박스">☑</button>
+          </div>
+        )}
         <textarea
           ref={taRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
+          onKeyDown={onKeyDown}
+          onSelect={syncSel}
+          onKeyUp={syncSel}
+          onMouseUp={syncSel}
         />
       </div>
     );
@@ -63,7 +126,7 @@ export default function TextWidget({ widget, editMode, onChange }) {
 
   if (!text) {
     return (
-      <div className="w-text" onDoubleClick={() => editMode && setEditing(true)}>
+      <div className="w-text" onDoubleClick={() => setEditing(true)}>
         <span style={{ color: '#9ca3af' }}>더블클릭하여 편집</span>
       </div>
     );
@@ -72,7 +135,7 @@ export default function TextWidget({ widget, editMode, onChange }) {
   const lines = text.split('\n');
 
   return (
-    <div className="w-text" onDoubleClick={() => editMode && setEditing(true)}>
+    <div className="w-text" onDoubleClick={() => setEditing(true)}>
       {lines.map((line, idx) => {
         const task = line.match(TASK_RE);
         if (task) {

@@ -258,7 +258,7 @@ button {
 .zoom-controls {
   position: fixed;
   bottom: 16px;
-  left: 16px;
+  right: 16px;
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -272,10 +272,10 @@ button {
   text-align: center;
 }
 
-.bottom-right {
+.bottom-left {
   position: fixed;
   bottom: 16px;
-  right: 16px;
+  left: 16px;
   z-index: 1000;
   display: flex;
   gap: 4px;
@@ -366,6 +366,57 @@ button {
   text-decoration: line-through;
   opacity: 0.55;
 }
+
+/* 편집 중 텍스트 위젯 + 서식 바 */
+.w-editing {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.w-editing textarea {
+  padding: 12px;
+}
+.fmt-bar {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
+.fmt-bar button {
+  width: 26px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #333;
+}
+.fmt-bar button:hover { background: #eef0f3; }
+
+/* 처음 화면에 보이는 영역 가이드 (편집 모드) */
+.home-frame {
+  position: absolute;
+  border: 4px solid rgba(0, 0, 0, 0.4);
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 4px;
+}
+
+/* 이동 시 정렬 스냅 가이드 */
+.snap-guide-v,
+.snap-guide-h {
+  position: absolute;
+  background: #ff3b6b;
+  pointer-events: none;
+  z-index: 99999;
+}
+.snap-guide-v { top: -100000px; height: 200000px; width: 1px; }
+.snap-guide-h { left: -100000px; width: 200000px; height: 1px; }
 
 .w-image {
   width: 100%;
