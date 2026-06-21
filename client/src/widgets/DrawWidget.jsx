@@ -33,6 +33,7 @@ export default function DrawWidget({ widget, editMode, onChange }) {
     return [
       Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)),
       Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)),
+      e.pressure > 0 ? e.pressure : 0.5, // 필압 (애플펜슬 등)
     ];
   }
 
@@ -55,7 +56,8 @@ export default function DrawWidget({ widget, editMode, onChange }) {
       eraseRef.current = [...strokes];
       eraseAt(pt(e));
     } else {
-      setCur({ color, width, points: [pt(e)] });
+      const isHl = tool === 'hl';
+      setCur({ type: isHl ? 'hl' : 'pen', color, width: isHl ? 16 : width, points: [pt(e)] });
     }
   }
   function onMove(e) {
@@ -79,6 +81,43 @@ export default function DrawWidget({ widget, editMode, onChange }) {
   }
 
   const toPoints = (s) => s.points.map((p) => `${p[0]},${p[1]}`).join(' ');
+
+  // 펜: 필압에 따라 굵기가 변하도록 선분 단위로 렌더
+  function renderStroke(s, i) {
+    if (s.type === 'hl') {
+      return (
+        <polyline
+          key={i}
+          points={toPoints(s)}
+          fill="none"
+          stroke={s.color}
+          strokeOpacity={0.35}
+          strokeWidth={s.width}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      );
+    }
+    if (s.points.length < 2) return null;
+    const segs = [];
+    for (let j = 1; j < s.points.length; j++) {
+      const a = s.points[j - 1];
+      const b = s.points[j];
+      const p = ((a[2] ?? 0.5) + (b[2] ?? 0.5)) / 2;
+      segs.push(
+        <line
+          key={j}
+          x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
+          stroke={s.color}
+          strokeWidth={s.width * (0.4 + 1.2 * p)}
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      );
+    }
+    return <g key={i}>{segs}</g>;
+  }
   const undo = () => onChange({ content: { ...content, strokes: strokes.slice(0, -1) } }, { commit: true });
   const clear = () => onChange({ content: { ...content, strokes: [] } }, { commit: true });
   const setBg = (c) => onChange({ content: { ...content, bg: c } }, { commit: true });
@@ -102,6 +141,7 @@ export default function DrawWidget({ widget, editMode, onChange }) {
           ))}
           <button className={`draw-w ${tool === 'pen' && width === 2 ? 'on' : ''}`} title="얇게" onClick={() => { setWidth(2); setTool('pen'); }}>·</button>
           <button className={`draw-w ${tool === 'pen' && width === 5 ? 'on' : ''}`} title="굵게" onClick={() => { setWidth(5); setTool('pen'); }}>●</button>
+          <button className={`draw-w ${tool === 'hl' ? 'on' : ''}`} title="형광펜" onClick={() => setTool('hl')}>🖍</button>
           <button className={`draw-w ${tool === 'eraser' ? 'on' : ''}`} title="지우개" onClick={() => setTool('eraser')}>⌫</button>
           <button className="draw-w" title="한 획 취소" onClick={undo}>↺</button>
           <button className="draw-w" title="전체 지우기" onClick={clear}>🗑</button>
@@ -132,23 +172,12 @@ export default function DrawWidget({ widget, editMode, onChange }) {
         ref={svgRef}
         viewBox="0 0 1 1"
         preserveAspectRatio="none"
-        style={{ cursor: tool === 'eraser' ? 'cell' : tool === 'pen' ? 'crosshair' : 'default', pointerEvents: tool === 'none' ? 'none' : 'auto' }}
+        style={{ cursor: tool === 'eraser' ? 'cell' : tool === 'none' ? 'default' : 'crosshair', pointerEvents: tool === 'none' ? 'none' : 'auto' }}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
       >
-        {[...strokes, ...(cur ? [cur] : [])].map((s, i) => (
-          <polyline
-            key={i}
-            points={toPoints(s)}
-            fill="none"
-            stroke={s.color}
-            strokeWidth={s.width}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
+        {[...strokes, ...(cur ? [cur] : [])].map(renderStroke)}
       </svg>
     </div>
   );

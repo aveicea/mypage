@@ -18,16 +18,21 @@ function toEmbedUrl(raw) {
 
 const clampZoom = (z) => Math.min(3, Math.max(0.25, Math.round(z * 100) / 100));
 
-export default function EmbedWidget({ widget, editMode, onChange }) {
-  const url = widget.content?.url || '';
-  const zoom = widget.content?.zoom ?? 1; // 콘텐츠 확대 배율(직접 설정)
+export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
+  const content = widget.content || {};
+  const url = content.url || '';
+  // 확대 배율은 기기별로 저장 (없으면 공통 zoom, 그래도 없으면 1)
+  const zoom = content.zooms?.[deviceId] ?? content.zoom ?? 1;
 
   function setUrl() {
     const next = window.prompt('임베드할 URL 입력 (YouTube, Notion 등)', url);
-    if (next != null) onChange({ content: { ...widget.content, url: next } }, { commit: true });
+    if (next != null) onChange({ content: { ...content, url: next } }, { commit: true });
   }
   function setZoom(z) {
-    onChange({ content: { ...widget.content, zoom: clampZoom(z) } }, { commit: true });
+    onChange(
+      { content: { ...content, zooms: { ...content.zooms, [deviceId]: clampZoom(z) } } },
+      { commit: true }
+    );
   }
 
   if (!url) {

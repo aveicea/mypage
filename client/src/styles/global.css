@@ -344,12 +344,41 @@ button {
 
 /* ---------- 위젯 내용 공통 ---------- */
 .w-text {
+  position: relative;
   padding: 12px;
   font-size: 14px;
   line-height: 1.5;
   height: 100%;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* 접기 표시 (오른쪽 아래 모서리 접힘) */
+.fold-btn {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 14px 14px;
+  border-color: transparent transparent rgba(0, 0, 0, 0.22) transparent;
+  cursor: pointer;
+}
+.fold-btn:hover { border-bottom-color: rgba(0, 0, 0, 0.45); }
+.fold-btn.on { border-bottom-color: rgba(0, 0, 0, 0.4); }
+
+.w-collapsed {
+  display: flex;
+  align-items: center;
+}
+.w-collapsed-line {
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: normal;
 }
 
 .w-text textarea {

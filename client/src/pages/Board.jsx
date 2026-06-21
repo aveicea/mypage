@@ -122,7 +122,7 @@ export default function Board() {
   }
 
   function renderWidgetContent(w) {
-    const common = { widget: w, editMode, api, onChange: (patch, opts) => updateWidget(w.id, patch, opts) };
+    const common = { widget: w, editMode, api, deviceId, onChange: (patch, opts) => updateWidget(w.id, patch, opts) };
     switch (w.type) {
       case 'image': return <ImageWidget {...common} />;
       case 'link': return <LinkWidget {...common} />;
