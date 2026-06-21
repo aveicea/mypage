@@ -57,6 +57,7 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
     const session = (editMode && selected) || drawing;
     if (!session || tool === 'none') return;
     e.stopPropagation();
+    e.preventDefault(); // 아래 위젯의 텍스트가 선택되지 않게
     svgRef.current.setPointerCapture(e.pointerId);
     if (tool === 'eraser') {
       eraseRef.current = [...strokes];

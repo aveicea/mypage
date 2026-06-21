@@ -32,8 +32,9 @@ function serialize(rows) {
     .join('\n');
 }
 
-export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, onChange }) {
+export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, onAutoEmpty, onChange }) {
   const text = widget.content?.text ?? '';
+  const wasAuto = useRef(false);
   const [editing, setEditing] = useState(false);
   const [rows, setRows] = useState([]);
   const inputRefs = useRef([]);
@@ -63,6 +64,7 @@ export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, o
   // 추가 직후 자동 편집 시작 (편집모드 전환 없이 이 위젯만)
   useEffect(() => {
     if (autoEdit) {
+      wasAuto.current = true;
       startEditing();
       onAutoEdited?.();
     }
@@ -72,6 +74,13 @@ export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, o
   function commitEditing(rs) {
     setEditing(false);
     const next = serialize(rs);
+    // 더블클릭으로 추가했는데 아무것도 입력 안 했으면 위젯 삭제
+    if (wasAuto.current && next.trim() === '') {
+      wasAuto.current = false;
+      onAutoEmpty?.();
+      return;
+    }
+    wasAuto.current = false;
     if (next !== text) onChange({ content: { ...widget.content, text: next } }, { commit: true });
   }
 
@@ -266,16 +275,19 @@ export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, o
     const first = lines.find((l) => l.trim() !== '') || '';
     const clean = first.replace(/^(\s*[-*]?\s*)\[([ xX]?)\]\s?/, '').replace(/^#{1,3}\s+/, '');
     return (
-      <div className="w-text w-collapsed" onDoubleClick={startEditing}>
-        <div className="w-collapsed-line" dangerouslySetInnerHTML={{ __html: inlineMd(clean) || '&nbsp;' }} />
+      <>
+        <div className="w-text w-collapsed" onDoubleClick={startEditing}>
+          <div className="w-collapsed-line" dangerouslySetInnerHTML={{ __html: inlineMd(clean) || '&nbsp;' }} />
+        </div>
         {fold}
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="w-text" onDoubleClick={startEditing}>
-      {lines.map((line, idx) => {
+    <>
+      <div className="w-text" onDoubleClick={startEditing}>
+        {lines.map((line, idx) => {
         const task = line.match(TASK_RE);
         if (task) {
           const checked = task[2].toLowerCase() === 'x';
@@ -301,8 +313,9 @@ export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, o
         }
         if (line.trim() === '') return <div key={idx} className="w-blank" />;
         return <div key={idx} dangerouslySetInnerHTML={{ __html: inlineMd(line) }} />;
-      })}
+        })}
+      </div>
       {fold}
-    </div>
+    </>
   );
 }

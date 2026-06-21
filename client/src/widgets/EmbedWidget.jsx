@@ -69,13 +69,19 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
     </div>
   );
 
+  // zoom 이 1이면 transform 없이 100% 로 렌더(선명하게), 1이 아니면 스케일
+  const iframeStyle =
+    zoom === 1
+      ? { width: '100%', height: '100%' }
+      : { width: w, height: h, transform: `scale(${zoom})`, transformOrigin: '0 0' };
+
   return (
     <div className="w-embed" onDoubleClick={() => editMode && setUrl()}>
       {ctxEdit && selected && host && createPortal(tools, host)}
       <iframe
         src={toEmbedUrl(url)}
         title={widget.id}
-        style={{ width: w, height: h, transform: `scale(${zoom})`, transformOrigin: '0 0' }}
+        style={iframeStyle}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
       />

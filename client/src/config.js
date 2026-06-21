@@ -98,7 +98,11 @@ export function loadHomeRect(dbId) {
 }
 
 export function saveHomeRect(dbId, rect) {
-  localStorage.setItem('widget-board:home:' + dbId, JSON.stringify(rect));
+  try {
+    localStorage.setItem('widget-board:home:' + dbId, JSON.stringify(rect));
+  } catch (e) {
+    console.error('홈 영역 저장 실패(localStorage):', e);
+  }
 }
 
 /** 저장된 뷰(북마크) 목록 — 기기별 localStorage */
@@ -113,7 +117,11 @@ export function loadViews(dbId) {
 }
 
 export function saveViews(dbId, views) {
-  localStorage.setItem('widget-board:views:' + dbId, JSON.stringify(views));
+  try {
+    localStorage.setItem('widget-board:views:' + dbId, JSON.stringify(views));
+  } catch (e) {
+    console.error('뷰 저장 실패(localStorage):', e);
+  }
 }
 
 /** 인코딩된 config 를 포함한 전체 보드 URL 생성 */

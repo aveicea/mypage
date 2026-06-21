@@ -70,6 +70,7 @@ export default function Board() {
   viewsRef.current = views;
   const [activeView, setActiveView] = useState(null); // 칩으로 띄운 편집용 뷰 프레임
   const [autoEditId, setAutoEditId] = useState(null); // 추가 직후 자동 편집할 위젯
+  const [activeWidgetId, setActiveWidgetId] = useState(null); // 기본 모드에서 임시 편집 활성 위젯
   const undoStack = useRef([]); // 되돌리기 (추가/삭제/이동/리사이즈)
   const pushUndo = (entry) => {
     undoStack.current.push(entry);
@@ -144,6 +145,7 @@ export default function Board() {
   const panEnabled = editMode || !locked;
   const zoomEnabled = editMode && !locked;
   const maxZ = widgets.reduce((m, w) => Math.max(m, w.zIndex || 1), 1);
+  const minZ = widgets.reduce((m, w) => Math.min(m, w.zIndex || 1), 1);
 
   // 단축키
   useEffect(() => {
@@ -217,6 +219,7 @@ export default function Board() {
       savedViews: views,
       autoEdit: autoEditId === w.id,
       onAutoEdited: () => setAutoEditId(null),
+      onAutoEmpty: () => { boardRemove(w.id); setActiveWidgetId(null); },
       onChange: (patch, opts) => updateWidget(w.id, patch, opts),
     };
     switch (w.type) {
@@ -248,9 +251,13 @@ export default function Board() {
         onAddAt={handleAdd}
         onQuickAdd={async (world) => {
           const w = await handleAdd('text', world);
-          if (w) setAutoEditId(w.id); // 편집모드 전환 없이 그 위젯만 편집 시작
+          if (w) {
+            setAutoEditId(w.id); // 그 위젯만 편집 시작 (편집모드 전환 X)
+            setActiveWidgetId(w.id); // 그 위젯만 이동/크기조절 가능
+            setSelectedId(w.id);
+          }
         }}
-        onBackgroundClick={() => setSelectedId(null)}
+        onBackgroundClick={() => { setSelectedId(null); setActiveWidgetId(null); }}
       >
         {widgets.map((w) => (
           <WidgetFrame
@@ -258,10 +265,13 @@ export default function Board() {
             widget={w}
             zoom={viewport.zoom}
             editMode={editMode}
-            selected={editMode && selectedId === w.id}
+            interactive={editMode || activeWidgetId === w.id}
+            selected={(editMode && selectedId === w.id) || activeWidgetId === w.id}
             onSelect={selectWidget}
             onChange={(patch, opts) => updateWidget(w.id, patch, opts)}
             onDragStart={() => pushUndo({ kind: 'geom', id: w.id, x: w.x, y: w.y, width: w.width, height: w.height })}
+            onBringFront={(id) => updateWidget(id, { zIndex: maxZ + 1 }, { commit: true })}
+            onSendBack={(id) => updateWidget(id, { zIndex: minZ - 1 }, { commit: true })}
             onDelete={(id) => boardRemove(id)}
             others={editMode ? widgets.filter((x) => x.id !== w.id) : []}
             setGuides={setGuides}

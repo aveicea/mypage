@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef } from 'react';
+import { useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { WidgetChromeContext } from './WidgetFrame.jsx';
 
@@ -11,19 +11,6 @@ export default function ViewButtonWidget({ widget, editMode, savedViews = [], on
   const content = widget.content || {};
   const name = content.name || '뷰';
   const rect = content.rect;
-  const btnRef = useRef(null);
-
-  // 글씨 크기에 맞게 위젯 크기 자동 조정
-  useEffect(() => {
-    const el = btnRef.current;
-    if (!el) return;
-    const w = Math.ceil(el.offsetWidth);
-    const h = Math.ceil(el.offsetHeight);
-    if (Math.abs(w - widget.width) > 1 || Math.abs(h - widget.height) > 1) {
-      onChange({ width: w, height: h }, { commit: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name]);
 
   function rename() {
     const n = window.prompt('버튼 제목', name);
@@ -56,7 +43,7 @@ export default function ViewButtonWidget({ widget, editMode, savedViews = [], on
   return (
     <div className="w-viewbtn" onDoubleClick={() => editMode && rename()}>
       {showTools && createPortal(tools, host)}
-      <button ref={btnRef} className="vb-main" onClick={() => { if (!editMode && rect) onJumpTo?.(rect); }}>
+      <button className="vb-main" onClick={() => { if (!editMode && rect) onJumpTo?.(rect); }}>
         {name}
       </button>
     </div>

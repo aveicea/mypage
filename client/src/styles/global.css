@@ -118,12 +118,19 @@ button {
 }
 
 .widget-body {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow: auto;
   /* 둥근 모서리 안쪽으로 콘텐츠 클리핑 */
   border-radius: 9px;
+  /* 스크롤바: 배경 없이 회색만 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.28) transparent;
 }
+.widget-body::-webkit-scrollbar { width: 6px; height: 6px; }
+.widget-body::-webkit-scrollbar-track { background: transparent; }
+.widget-body::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.28); border-radius: 3px; }
 
 .widget-resize {
   position: absolute;
@@ -420,7 +427,7 @@ button {
   word-break: break-word;
 }
 
-/* 접기 표시 (오른쪽 아래 모서리 접힘) */
+/* 접힘 표시: 오른쪽 아래 모서리에 회색 dog-ear 세모 (스크롤해도 모서리 고정) */
 .fold-btn {
   position: absolute;
   right: 0;
@@ -428,12 +435,12 @@ button {
   width: 0;
   height: 0;
   border-style: solid;
-  border-width: 0 0 14px 14px;
-  border-color: transparent transparent rgba(0, 0, 0, 0.22) transparent;
+  border-width: 0 0 16px 16px;
+  border-color: transparent transparent #9ca3af transparent;
   cursor: pointer;
+  z-index: 3;
 }
-.fold-btn:hover { border-bottom-color: rgba(0, 0, 0, 0.45); }
-.fold-btn.on { border-bottom-color: rgba(0, 0, 0, 0.4); }
+.fold-btn:hover { border-bottom-color: #6b7280; }
 
 .w-collapsed {
   display: flex;
@@ -709,6 +716,8 @@ button {
   width: 100%;
   height: 100%;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .w-draw svg {
   width: 100%;

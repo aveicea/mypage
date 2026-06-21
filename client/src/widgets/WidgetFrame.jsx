@@ -79,11 +79,14 @@ export default function WidgetFrame({
   widget,
   zoom,
   editMode,
+  interactive,
   selected,
   onSelect,
   onChange,
   onDelete,
   onDragStart,
+  onBringFront,
+  onSendBack,
   others = [],
   setGuides,
   children,
@@ -92,9 +95,10 @@ export default function WidgetFrame({
   const drag = useRef(null);
   const [extHost, setExtHost] = useState(null);
   const hostRef = useCallback((node) => setExtHost(node), []);
+  const act = interactive ?? editMode; // 편집 모드이거나, 이 위젯만 임시 편집 활성
 
   function onPointerDown(e) {
-    if (!editMode) return;
+    if (!act) return;
     // 핸들/툴바는 각자 처리
     if (e.target.closest('.widget-resize') || e.target.closest('.widget-toolbar')) return;
     e.stopPropagation(); // 캔버스 패닝 방지
@@ -179,16 +183,17 @@ export default function WidgetFrame({
 
   const isPostit = widget.type === 'postit';
   const isDraw = widget.type === 'draw';
+  const isViewbtn = widget.type === 'viewbtn';
 
   return (
     <div
       ref={ref}
-      className={`widget widget--${widget.type} ${editMode ? 'edit' : ''} ${selected ? 'selected' : ''}`}
+      className={`widget widget--${widget.type} ${act ? 'edit' : ''} ${selected ? 'selected' : ''}`}
       style={{
         left: widget.x,
         top: widget.y,
-        width: widget.width,
-        height: widget.height,
+        // 뷰 버튼은 내용(글씨)에 맞게 자동 크기
+        ...(isViewbtn ? {} : { width: widget.width, height: widget.height }),
         zIndex: widget.zIndex,
         ...(isPostit ? { background: widget.content?.color || POSTIT_COLORS[0] } : {}),
       }}
@@ -197,17 +202,29 @@ export default function WidgetFrame({
       onPointerUp={onPointerUp}
     >
       <div className="widget-body">
-        <WidgetChromeContext.Provider value={{ host: extHost, selected, editMode }}>
+        <WidgetChromeContext.Provider value={{ host: extHost, selected, editMode: act }}>
           {children}
         </WidgetChromeContext.Provider>
       </div>
 
       <div className="widget-ext">
-        {editMode && selected && (
+        {act && selected && (
           <div className="widget-toolbar">
             <button className="wt-btn wt-move" title="이동" onPointerDown={startMove}>
               <MoveIcon />
             </button>
+            <button
+              className="wt-btn"
+              title="맨 앞으로"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onBringFront?.(widget.id); }}
+            >⤒</button>
+            <button
+              className="wt-btn"
+              title="맨 뒤로"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onSendBack?.(widget.id); }}
+            >⤓</button>
             <button
               className="wt-btn wt-del"
               title="삭제"
@@ -268,7 +285,7 @@ export default function WidgetFrame({
         <span className="wt-ext" ref={hostRef} />
       </div>
 
-      {editMode && selected &&
+      {act && selected && !isViewbtn &&
         ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((dir) => (
           <div
             key={dir}
