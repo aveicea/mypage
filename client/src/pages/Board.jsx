@@ -140,6 +140,10 @@ export default function Board() {
         onHomeChange={setHomeRect}
         onHomeCommit={() => saveHomeRect(config.databaseId, homeRef.current)}
         onAddAt={handleAdd}
+        onQuickAdd={(world) => {
+          setEditMode(true);
+          handleAdd('text', world);
+        }}
         onBackgroundClick={() => setSelectedId(null)}
       >
         {widgets.map((w) => (

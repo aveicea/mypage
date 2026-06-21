@@ -13,6 +13,7 @@ export default function Canvas({
   onHomeChange,
   onHomeCommit,
   onAddAt,
+  onQuickAdd,
   onBackgroundClick,
   children,
 }) {
@@ -124,6 +125,13 @@ export default function Canvas({
     setGrabbing(false);
   }
 
+  function onDblClick(e) {
+    if (!isBackground(e)) return;
+    const rect = rootRef.current.getBoundingClientRect();
+    const world = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+    onQuickAdd?.(world);
+  }
+
   function onContextMenu(e) {
     if (!isBackground(e)) return;
     e.preventDefault();
@@ -148,6 +156,7 @@ export default function Canvas({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onDoubleClick={onDblClick}
       onContextMenu={onContextMenu}
     >
       <div
