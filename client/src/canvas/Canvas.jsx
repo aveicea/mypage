@@ -26,14 +26,23 @@ export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBack
     const el = rootRef.current;
     if (!el) return;
     const onWheel = (e) => {
-      if (editMode) {
-        // 편집 모드: 휠 = 확대/축소
-        e.preventDefault();
-        const rect = el.getBoundingClientRect();
-        const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-        zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
-      } else if (panEnabled) {
-        // 잠금 해제 보기: 휠 = 스크롤(이동), 확대는 안 함
+      // 위젯 안에서 스크롤이 가능한 곳이면 그 위젯이 스크롤하도록 둔다
+      const body = e.target.closest && e.target.closest('.widget-body');
+      if (body && !e.ctrlKey && body.scrollHeight - body.clientHeight > 1) return;
+
+      if (e.ctrlKey) {
+        // 핀치(트랙패드)/Ctrl+휠 = 확대/축소 (편집 모드에서만)
+        if (editMode) {
+          e.preventDefault();
+          const rect = el.getBoundingClientRect();
+          const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+          zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
+        }
+        return;
+      }
+
+      // 일반 스크롤 = 보드 이동 (편집 모드이거나 잠금 해제 보기)
+      if (panEnabled) {
         e.preventDefault();
         panBy(-e.deltaX, -e.deltaY);
       }

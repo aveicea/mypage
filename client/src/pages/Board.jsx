@@ -189,8 +189,13 @@ export default function Board() {
         </div>
       )}
 
-      {/* 좌하단: 잠금 / 설정 / 편집 토글 */}
+      {/* 좌하단: (리셋) / 잠금 / 설정 / 편집 토글 */}
       <div className="bottom-left">
+        {!editMode && !locked && (
+          <button className="icon-btn" title="처음 화면으로" onClick={viewport.reset}>
+            <ResetIcon />
+          </button>
+        )}
         {!editMode && (
           <button
             className="icon-btn"

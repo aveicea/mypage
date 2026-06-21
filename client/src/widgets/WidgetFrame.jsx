@@ -35,6 +35,42 @@ function computeSnap(x, y, w, h, others, thr) {
   return { x: hasX ? x + dx : x, y: hasY ? y + dy : y, guides };
 }
 
+/** 리사이즈 중 움직이는 모서리를 다른 위젯 모서리/중심에 스냅 */
+function snapResize(nx, ny, nw, nh, dir, others, thr) {
+  const xt = [];
+  const yt = [];
+  for (const o of others) {
+    xt.push(o.x, o.x + o.width / 2, o.x + o.width);
+    yt.push(o.y, o.y + o.height / 2, o.y + o.height);
+  }
+  const nearest = (val, targets) => {
+    let best = thr + 1, at = null;
+    for (const t of targets) {
+      const dd = Math.abs(t - val);
+      if (dd < best) { best = dd; at = t; }
+    }
+    return best <= thr ? at : null;
+  };
+  const guides = [];
+  if (dir.includes('e')) {
+    const at = nearest(nx + nw, xt);
+    if (at != null) { nw = at - nx; guides.push({ axis: 'x', at }); }
+  }
+  if (dir.includes('w')) {
+    const at = nearest(nx, xt);
+    if (at != null) { nw += nx - at; nx = at; guides.push({ axis: 'x', at }); }
+  }
+  if (dir.includes('s')) {
+    const at = nearest(ny + nh, yt);
+    if (at != null) { nh = at - ny; guides.push({ axis: 'y', at }); }
+  }
+  if (dir.includes('n')) {
+    const at = nearest(ny, yt);
+    if (at != null) { nh += ny - at; ny = at; guides.push({ axis: 'y', at }); }
+  }
+  return { nx, ny, nw, nh, guides };
+}
+
 export default function WidgetFrame({
   widget,
   zoom,
@@ -114,6 +150,12 @@ export default function WidgetFrame({
     if (dir.includes('s')) nh = d.oh + dy;
     if (dir.includes('w')) { nw = d.ow - dx; nx = d.ox + dx; }
     if (dir.includes('n')) { nh = d.oh - dy; ny = d.oy + dy; }
+
+    // 리사이즈 중 모서리 스냅 가이드
+    const r = snapResize(nx, ny, nw, nh, dir, others, 6 / zoom);
+    nx = r.nx; ny = r.ny; nw = r.nw; nh = r.nh;
+    setGuides?.(r.guides);
+
     if (nw < MINW) { if (dir.includes('w')) nx -= MINW - nw; nw = MINW; }
     if (nh < MINH) { if (dir.includes('n')) ny -= MINH - nh; nh = MINH; }
     onChange({ x: nx, y: ny, width: nw, height: nh });
