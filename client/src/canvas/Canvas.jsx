@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
  * 무한 캔버스. 빈 공간 드래그로 패닝, 휠로 줌.
  * 자식(위젯 레이어)은 pan/zoom transform 이 적용된 .canvas-layer 안에 렌더링.
  */
-export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick, children }) {
+export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBackgroundClick, children }) {
   const { pan, zoom, zoomAt, panBy, screenToWorld } = viewport;
   const rootRef = useRef(null);
   const panning = useRef(null);
@@ -18,17 +18,22 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
     const el = rootRef.current;
     if (!el) return;
     const onWheel = (e) => {
-      if (!editMode) return; // 보기 모드: 줌 안 함 (위젯 내부 스크롤 허용)
-      e.preventDefault();
-      const rect = el.getBoundingClientRect();
-      const sx = e.clientX - rect.left;
-      const sy = e.clientY - rect.top;
-      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-      zoomAt(sx, sy, factor);
+      if (editMode) {
+        // 편집 모드: 휠 = 확대/축소
+        e.preventDefault();
+        const rect = el.getBoundingClientRect();
+        const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+        zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
+      } else if (panEnabled) {
+        // 잠금 해제 보기: 휠 = 스크롤(이동), 확대는 안 함
+        e.preventDefault();
+        panBy(-e.deltaX, -e.deltaY);
+      }
+      // 잠금 보기: 아무것도 안 함 (완전 고정)
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [zoomAt, editMode]);
+  }, [zoomAt, panBy, editMode, panEnabled]);
 
   function dist(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
@@ -41,6 +46,11 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
   function onPointerDown(e) {
     if (menu) setMenu(null);
     if (!isBackground(e)) return;
+    if (e.button === 0 || e.pointerType !== 'mouse') {
+      // 배경 빈 곳 클릭 = 선택 해제
+      onBackgroundClick?.();
+    }
+    if (!panEnabled) return; // 잠금 보기: 패닝 안 함
     if (e.pointerType === 'mouse' && e.button !== 0) return; // 좌클릭만 패닝
 
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -90,12 +100,8 @@ export default function Canvas({ viewport, editMode, onAddAt, onBackgroundClick,
     pointers.current.delete(e.pointerId);
     if (pointers.current.size < 2) pinch.current = null;
 
-    const wasPanning = panning.current;
     panning.current = null;
     setGrabbing(false);
-    if (wasPanning && !wasPanning.moved && isBackground(e)) {
-      onBackgroundClick?.();
-    }
   }
 
   function onContextMenu(e) {

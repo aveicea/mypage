@@ -65,24 +65,31 @@ button {
 /* ---------- 위젯 프레임 ---------- */
 .widget {
   position: absolute;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  /* 기본 위젯은 배경/테두리 없이 콘텐츠만 보인다 */
+  background: transparent;
+  border: none;
   border-radius: 10px;
-  box-shadow: var(--shadow);
   /* 바깥에 떠 있는 삭제 버튼/리사이즈 핸들이 잘리지 않도록 visible */
   overflow: visible;
   display: flex;
   flex-direction: column;
 }
 
-/* 임베드는 카드 흰 배경 없이 콘텐츠만 보이게 */
-.widget--embed {
-  background: transparent;
+/* 배경이 필요한 메모는 별도 포스트잇 위젯 */
+.widget--postit {
+  background: #fff7c2;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
 .widget.selected {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
+}
+
+/* 편집 모드에서 선택 안 된 위젯은 잡을 수 있게 옅은 외곽선 */
+.widget.edit:not(.selected) {
+  outline: 1px dashed rgba(0, 0, 0, 0.18);
+  outline-offset: 2px;
 }
 
 /* 편집 모드: 위젯 본문을 잡아 드래그 → move 커서. 단 입력/버튼은 기본 커서 */
@@ -136,24 +143,34 @@ button {
 .r-w { left: -5px; }
 .r-e { right: -5px; }
 
-.widget-delete {
+/* 위젯 상단 작은 툴바: 이동 핸들 + 삭제 (코너 핸들과 안 겹치게 위로) */
+.widget-toolbar {
   position: absolute;
-  top: -10px;
-  right: -10px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--danger);
-  color: #fff;
-  border: 2px solid #fff;
-  font-size: 13px;
-  line-height: 1;
+  top: -34px;
+  left: -2px;
+  display: flex;
+  gap: 2px;
+  z-index: 5;
+}
+
+.wt-btn {
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  color: #333;
+  padding: 0;
 }
+.wt-btn svg { width: 15px; height: 15px; }
+.wt-move { cursor: move; }
+.wt-del:hover { color: var(--danger); }
 
-/* ---------- 툴바 / 컨트롤 ---------- */
+/* ---------- 툴바 / 컨트롤 (아이콘 전용, 배경/테두리 없음) ---------- */
 .toolbar {
   position: fixed;
   top: 16px;
@@ -163,6 +180,22 @@ button {
   gap: 8px;
 }
 
+/* 흑백 아이콘 버튼: 배경·테두리 없음 */
+.icon-btn {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  color: #2b2f36;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+.icon-btn:hover { color: #000; }
+.icon-btn:disabled { opacity: 0.35; cursor: default; }
+.icon-btn.active { color: var(--accent); }
+
+/* 설정 화면 등에서 쓰는 일반 버튼 */
 .btn {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -172,16 +205,8 @@ button {
   color: var(--text);
   box-shadow: var(--shadow);
 }
-
-.btn:hover {
-  background: #f9fafb;
-}
-
-.btn.accent {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
+.btn:hover { background: #f9fafb; }
+.btn.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 .dropdown {
   position: relative;
@@ -220,26 +245,14 @@ button {
   z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 4px 6px;
-  box-shadow: var(--shadow);
+  gap: 2px;
+}
+
+.zoom-pct {
   font-size: 12px;
-}
-
-.zoom-controls button {
-  border: none;
-  background: transparent;
-  font-size: 14px;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-}
-
-.zoom-controls button:hover {
-  background: #f1f2f4;
+  color: #555;
+  min-width: 38px;
+  text-align: center;
 }
 
 .bottom-right {
@@ -248,8 +261,28 @@ button {
   right: 16px;
   z-index: 1000;
   display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* 상태 토스트 */
+.toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 8px 14px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
+.toast-error { color: var(--danger); }
 
 .context-menu {
   position: fixed;

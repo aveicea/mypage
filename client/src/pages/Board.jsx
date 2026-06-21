@@ -12,20 +12,33 @@ import ImageWidget from '../widgets/ImageWidget.jsx';
 import LinkWidget from '../widgets/LinkWidget.jsx';
 import EmbedWidget from '../widgets/EmbedWidget.jsx';
 import GithubWidget from '../widgets/GithubWidget.jsx';
+import {
+  PencilIcon, LockClosedIcon, LockOpenIcon, GearIcon,
+  PlusIcon, MinusIcon, ResetIcon,
+} from '../widgets/icons.jsx';
 
 const DEFAULTS = {
-  text: { width: 240, height: 160, content: { text: '' } },
+  text: { width: 220, height: 120, content: { text: '' } },
+  postit: { width: 200, height: 200, content: { text: '' } },
   image: { width: 280, height: 200, content: { src: '' } },
   link: { width: 280, height: 220, content: { url: '' } },
   embed: { width: 360, height: 240, content: { url: '' } },
   github: { width: 320, height: 200, content: { url: '' } },
 };
 
+const ADD_TYPES = [
+  ['text', '텍스트'],
+  ['postit', '포스트잇'],
+  ['image', '이미지'],
+  ['link', '링크 카드'],
+  ['embed', '임베드'],
+  ['github', '깃허브 카드'],
+];
+
 export default function Board() {
   const navigate = useNavigate();
   const config = useMemo(() => resolveConfig(), []);
 
-  // 설정이 없으면 /setup 으로
   if (!config) {
     navigate('/setup', { replace: true });
     return null;
@@ -35,13 +48,16 @@ export default function Board() {
   const viewport = useViewport();
   const { widgets, status, error, updateWidget, addWidget, removeWidget } = useWidgetSync(api);
 
-  const [editMode, setEditMode] = useState(false); // 항상 보기 모드로 시작
+  const [editMode, setEditMode] = useState(false); // ✏️ 항상 보기 모드로 시작
+  const [locked, setLocked] = useState(true); // 🔒 기본은 화면 완전 고정
   const [selectedId, setSelectedId] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // 패닝 가능 조건: 편집 모드이거나, 보기 모드에서 잠금 해제일 때
+  const panEnabled = editMode || !locked;
   const maxZ = widgets.reduce((m, w) => Math.max(m, w.zIndex || 1), 1);
 
-  function bringToFront(id) {
+  function selectWidget(id) {
     setSelectedId(id);
     const w = widgets.find((x) => x.id === id);
     if (w && w.zIndex < maxZ) updateWidget(id, { zIndex: maxZ + 1 }, { commit: true });
@@ -49,7 +65,6 @@ export default function Board() {
 
   async function handleAdd(type, world) {
     const def = DEFAULTS[type] || DEFAULTS.text;
-    // 좌표가 없으면 현재 화면 중앙 근처에 배치
     const pos = world || viewport.screenToWorld(window.innerWidth / 2, window.innerHeight / 2);
     const widget = {
       type,
@@ -73,24 +88,18 @@ export default function Board() {
       case 'link': return <LinkWidget {...common} />;
       case 'embed': return <EmbedWidget {...common} />;
       case 'github': return <GithubWidget {...common} />;
+      case 'postit':
       case 'text':
       default: return <TextWidget {...common} />;
     }
   }
-
-  const addTypes = [
-    ['text', '텍스트/메모'],
-    ['image', '이미지'],
-    ['link', '링크 카드'],
-    ['embed', '임베드'],
-    ['github', '깃허브 카드'],
-  ];
 
   return (
     <>
       <Canvas
         viewport={viewport}
         editMode={editMode}
+        panEnabled={panEnabled}
         onAddAt={handleAdd}
         onBackgroundClick={() => setSelectedId(null)}
       >
@@ -101,7 +110,7 @@ export default function Board() {
             zoom={viewport.zoom}
             editMode={editMode}
             selected={editMode && selectedId === w.id}
-            onSelect={bringToFront}
+            onSelect={selectWidget}
             onChange={(patch, opts) => updateWidget(w.id, patch, opts)}
             onDelete={(id) => {
               removeWidget(id);
@@ -117,15 +126,13 @@ export default function Board() {
       {editMode && (
         <div className="toolbar">
           <div className="dropdown">
-            <button className="btn accent" onClick={() => setMenuOpen((v) => !v)}>
-              + 위젯 추가
+            <button className="icon-btn" title="위젯 추가" onClick={() => setMenuOpen((v) => !v)}>
+              <PlusIcon />
             </button>
             {menuOpen && (
               <div className="dropdown-menu">
-                {addTypes.map(([type, label]) => (
-                  <button key={type} onClick={() => handleAdd(type)}>
-                    {label}
-                  </button>
+                {ADD_TYPES.map(([type, label]) => (
+                  <button key={type} onClick={() => handleAdd(type)}>{label}</button>
                 ))}
               </div>
             )}
@@ -136,42 +143,52 @@ export default function Board() {
       {/* 좌하단: 줌 컨트롤 (편집 모드에서만) */}
       {editMode && (
         <div className="zoom-controls">
-          <button onClick={() => viewport.zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1 / 1.1)}>−</button>
-          <span>{Math.round(viewport.zoom * 100)}%</span>
-          <button onClick={() => viewport.zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1.1)}>＋</button>
-          <button onClick={viewport.reset} title="리셋">⟳</button>
+          <button className="icon-btn" title="축소" onClick={() => viewport.zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.1)}>
+            <MinusIcon />
+          </button>
+          <span className="zoom-pct">{Math.round(viewport.zoom * 100)}%</span>
+          <button className="icon-btn" title="확대" onClick={() => viewport.zoomAt(innerWidth / 2, innerHeight / 2, 1.1)}>
+            <PlusIcon />
+          </button>
+          <button className="icon-btn" title="리셋" onClick={viewport.reset}>
+            <ResetIcon />
+          </button>
         </div>
       )}
 
-      {/* 우하단: 편집 모드 토글 + API 설정 */}
+      {/* 우하단: 잠금 / 설정 / 편집 토글 */}
       <div className="bottom-right">
+        {!editMode && (
+          <button
+            className="icon-btn"
+            title={locked ? '잠금됨 (탭하여 스크롤 허용)' : '스크롤 허용됨 (탭하여 고정)'}
+            onClick={() => setLocked((v) => !v)}
+          >
+            {locked ? <LockClosedIcon /> : <LockOpenIcon />}
+          </button>
+        )}
         {editMode && (
-          <button className="btn" onClick={() => navigate('/setup')}>API 설정</button>
+          <button className="icon-btn" title="API 설정" onClick={() => navigate('/setup')}>
+            <GearIcon />
+          </button>
         )}
         <button
-          className={`btn ${editMode ? 'accent' : ''}`}
+          className={`icon-btn ${editMode ? 'active' : ''}`}
+          title={editMode ? '편집 종료' : '편집 모드'}
           onClick={() => {
             setEditMode((v) => !v);
             setSelectedId(null);
             setMenuOpen(false);
           }}
         >
-          {editMode ? '편집 모드 ✓' : '편집 모드'}
+          <PencilIcon />
         </button>
       </div>
 
-      {/* 상태 표시 */}
-      {status === 'loading' && (
-        <div className="zoom-controls" style={{ bottom: 'auto', top: 16, left: '50%', transform: 'translateX(-50%)' }}>
-          Notion 에서 불러오는 중…
-        </div>
-      )}
+      {status === 'loading' && <div className="toast">Notion 에서 불러오는 중…</div>}
       {status === 'error' && (
-        <div
-          className="zoom-controls"
-          style={{ bottom: 'auto', top: 16, left: '50%', transform: 'translateX(-50%)', color: 'var(--danger)' }}
-        >
-          오류: {error} <button onClick={() => navigate('/setup')}>설정</button>
+        <div className="toast toast-error">
+          오류: {error} <button className="icon-btn" onClick={() => navigate('/setup')}><GearIcon /></button>
         </div>
       )}
     </>

@@ -1,14 +1,11 @@
 import { useRef } from 'react';
-
-// 이 요소들 위에서 시작한 포인터는 드래그(이동)로 처리하지 않고
-// 본래 동작(텍스트 입력, 버튼 클릭 등)이 그대로 일어나게 둔다.
-const SKIP_DRAG = new Set(['TEXTAREA', 'INPUT', 'BUTTON', 'SELECT']);
+import { MoveIcon, TrashIcon } from './icons.jsx';
 
 /**
  * 위젯 공통 프레임.
- * 편집 모드: 위젯 본문 아무 곳이나 잡아 드래그 이동, 모서리/변 핸들로 리사이즈,
- *            선택 강조 + 삭제 버튼. 단 입력/버튼 위에서는 드래그하지 않음.
- * 보기 모드: 본문 상호작용(스크롤/링크/영상)만, 이동·리사이즈 불가.
+ * 편집 모드 + 선택 시: 위쪽 작은 툴바의 "이동 핸들"을 잡아야만 이동(본문 드래그 X),
+ *   모서리/변 핸들로 리사이즈, 툴바의 휴지통으로 삭제.
+ * 본문 클릭 = 선택. 보기 모드: 이동/리사이즈 불가, 본문 상호작용만.
  */
 export default function WidgetFrame({
   widget,
@@ -25,10 +22,15 @@ export default function WidgetFrame({
 
   function onPointerDown(e) {
     if (!editMode) return;
-    if (e.target.classList.contains('widget-resize')) return; // 리사이즈 핸들이 처리
+    // 핸들/툴바는 각자 처리
+    if (e.target.closest('.widget-resize') || e.target.closest('.widget-toolbar')) return;
+    e.stopPropagation(); // 캔버스 패닝 방지
     onSelect?.(widget.id);
-    if (SKIP_DRAG.has(e.target.tagName) || e.target.closest('[data-no-drag]')) return;
+  }
+
+  function startMove(e) {
     e.stopPropagation();
+    onSelect?.(widget.id);
     drag.current = {
       mode: 'move',
       sx: e.clientX,
@@ -64,16 +66,11 @@ export default function WidgetFrame({
     const dy = (e.clientY - d.sy) / zoom;
 
     if (d.mode === 'move') {
-      // 작은 움직임은 무시 → 더블클릭/클릭이 드래그로 오인되지 않도록
-      if (!d.moved && Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < 4) return;
       d.moved = true;
-      e.stopPropagation();
       onChange({ x: d.ox + dx, y: d.oy + dy });
       return;
     }
 
-    // resize
-    e.stopPropagation();
     const MINW = 80;
     const MINH = 60;
     let nx = d.ox;
@@ -90,13 +87,10 @@ export default function WidgetFrame({
     onChange({ x: nx, y: ny, width: nw, height: nh });
   }
 
-  function onPointerUp(e) {
+  function onPointerUp() {
     const d = drag.current;
     drag.current = null;
-    if (d && d.moved) {
-      e.stopPropagation();
-      onChange({}, { commit: true }); // 드래그/리사이즈 종료 시 확정 저장
-    }
+    if (d && d.moved) onChange({}, { commit: true });
   }
 
   return (
@@ -116,8 +110,25 @@ export default function WidgetFrame({
     >
       <div className="widget-body">{children}</div>
 
-      {editMode && (
+      {editMode && selected && (
         <>
+          <div className="widget-toolbar">
+            <button className="wt-btn wt-move" title="이동" onPointerDown={startMove}>
+              <MoveIcon />
+            </button>
+            <button
+              className="wt-btn wt-del"
+              title="삭제"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.(widget.id);
+              }}
+            >
+              <TrashIcon />
+            </button>
+          </div>
+
           {['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((dir) => (
             <div
               key={dir}
@@ -125,19 +136,6 @@ export default function WidgetFrame({
               onPointerDown={(e) => startResize(e, dir)}
             />
           ))}
-          {selected && (
-            <button
-              className="widget-delete"
-              data-no-drag
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete?.(widget.id);
-              }}
-            >
-              ×
-            </button>
-          )}
         </>
       )}
     </div>
