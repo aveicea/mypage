@@ -543,6 +543,32 @@ button {
   border: none;
   display: block;
 }
+.embed-tools {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 6px;
+  box-shadow: var(--shadow);
+  z-index: 2;
+  font-size: 12px;
+}
+.embed-tools button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+.embed-tools button:hover { background: #eef0f3; }
+.embed-tools span { min-width: 38px; text-align: center; color: #555; }
 
 /* 그림 위젯 */
 .w-draw {

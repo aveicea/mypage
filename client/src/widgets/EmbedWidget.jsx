@@ -16,15 +16,18 @@ function toEmbedUrl(raw) {
   }
 }
 
-// 임베드 콘텐츠의 논리 너비. 위젯 너비를 이 값 기준으로 스케일 → 위젯을 키우면 콘텐츠도 확대.
-const BASE_WIDTH = 480;
+const clampZoom = (z) => Math.min(3, Math.max(0.25, Math.round(z * 100) / 100));
 
 export default function EmbedWidget({ widget, editMode, onChange }) {
   const url = widget.content?.url || '';
+  const zoom = widget.content?.zoom ?? 1; // 콘텐츠 확대 배율(직접 설정)
 
   function setUrl() {
     const next = window.prompt('임베드할 URL 입력 (YouTube, Notion 등)', url);
     if (next != null) onChange({ content: { ...widget.content, url: next } }, { commit: true });
+  }
+  function setZoom(z) {
+    onChange({ content: { ...widget.content, zoom: clampZoom(z) } }, { commit: true });
   }
 
   if (!url) {
@@ -35,19 +38,24 @@ export default function EmbedWidget({ widget, editMode, onChange }) {
     );
   }
 
-  const scale = Math.max(0.1, (widget.width || BASE_WIDTH) / BASE_WIDTH);
+  // 위젯을 항상 꽉 채우되, zoom 으로 콘텐츠가 보이는 배율을 조절
+  const w = (widget.width || 360) / zoom;
+  const h = (widget.height || 240) / zoom;
 
   return (
     <div className="w-embed" onDoubleClick={() => editMode && setUrl()}>
+      {editMode && (
+        <div className="embed-tools" onPointerDown={(e) => e.stopPropagation()}>
+          <button onClick={() => setZoom(zoom - 0.1)}>−</button>
+          <span>{Math.round(zoom * 100)}%</span>
+          <button onClick={() => setZoom(zoom + 0.1)}>＋</button>
+          <button title="URL 변경" onClick={setUrl}>URL</button>
+        </div>
+      )}
       <iframe
         src={toEmbedUrl(url)}
         title={widget.id}
-        style={{
-          width: BASE_WIDTH,
-          height: (widget.height || BASE_WIDTH) / scale,
-          transform: `scale(${scale})`,
-          transformOrigin: '0 0',
-        }}
+        style={{ width: w, height: h, transform: `scale(${zoom})`, transformOrigin: '0 0' }}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
       />
