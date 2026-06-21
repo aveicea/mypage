@@ -101,6 +101,21 @@ export function saveHomeRect(dbId, rect) {
   localStorage.setItem('widget-board:home:' + dbId, JSON.stringify(rect));
 }
 
+/** 저장된 뷰(북마크) 목록 — 기기별 localStorage */
+export function loadViews(dbId) {
+  try {
+    const v = JSON.parse(localStorage.getItem('widget-board:views:' + dbId));
+    if (Array.isArray(v)) return v;
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+export function saveViews(dbId, views) {
+  localStorage.setItem('widget-board:views:' + dbId, JSON.stringify(views));
+}
+
 /** 인코딩된 config 를 포함한 전체 보드 URL 생성 */
 export function buildShareUrl(config) {
   const encoded = encodeConfig(config);

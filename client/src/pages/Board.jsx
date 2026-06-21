@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { resolveConfig, getDeviceId, loadHomeRect, saveHomeRect } from '../config.js';
+import { resolveConfig, getDeviceId, loadHomeRect, saveHomeRect, loadViews, saveViews } from '../config.js';
 import { createApi } from '../api.js';
 import { useViewport } from '../canvas/useViewport.js';
 import { useWidgetSync } from '../hooks/useWidgetSync.js';
@@ -62,6 +62,29 @@ export default function Board() {
   );
   const homeRef = useRef(homeRect);
   homeRef.current = homeRect;
+  const [views, setViews] = useState(() => loadViews(config.databaseId));
+
+  function captureRect() {
+    const z = viewport.zoom;
+    return {
+      x: -viewport.pan.x / z,
+      y: -viewport.pan.y / z,
+      width: window.innerWidth / z,
+      height: window.innerHeight / z,
+    };
+  }
+  function addView() {
+    const name = window.prompt('뷰 이름', '뷰 ' + (views.length + 1));
+    if (name == null) return;
+    const next = [...views, { id: 'v' + Date.now(), name: name || '뷰 ' + (views.length + 1), rect: captureRect() }];
+    setViews(next);
+    saveViews(config.databaseId, next);
+  }
+  function removeView(id) {
+    const next = views.filter((v) => v.id !== id);
+    setViews(next);
+    saveViews(config.databaseId, next);
+  }
 
   // 첫 로드 시 홈 영역으로 맞춤 (한 번만)
   const didFit = useRef(false);
@@ -223,6 +246,25 @@ export default function Board() {
           <button className="icon-btn" title="리셋" onClick={() => viewport.fitTo(homeRect)}>
             <ResetIcon />
           </button>
+        </div>
+      )}
+
+      {/* 상단 중앙: 저장된 뷰(북마크) */}
+      {(views.length > 0 || editMode) && (
+        <div className="views-bar">
+          {views.map((v) => (
+            <span key={v.id} className="view-chip">
+              <button className="view-go" title={v.name} onClick={() => viewport.fitTo(v.rect)}>
+                {v.name}
+              </button>
+              {editMode && (
+                <button className="view-del" title="삭제" onClick={() => removeView(v.id)}>×</button>
+              )}
+            </span>
+          ))}
+          {editMode && (
+            <button className="view-add" title="현재 화면을 뷰로 저장" onClick={addView}>+ 뷰 저장</button>
+          )}
         </div>
       )}
 

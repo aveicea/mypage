@@ -298,6 +298,62 @@ button {
   gap: 4px;
 }
 
+/* 저장된 뷰 바 */
+.views-bar {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 70vw;
+}
+.view-chip {
+  display: inline-flex;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.view-go {
+  border: none;
+  background: transparent;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.view-go:hover { background: var(--accent-soft); }
+.view-del {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 7px 4px 2px;
+  font-size: 13px;
+}
+.view-del:hover { color: var(--danger); }
+.view-add {
+  border: 1px dashed var(--border);
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.view-add:hover { color: var(--text); background: #f9fafb; }
+
 /* 상태 토스트 */
 .toast {
   position: fixed;
