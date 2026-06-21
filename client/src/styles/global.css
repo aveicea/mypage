@@ -79,7 +79,20 @@ button {
   outline-offset: 1px;
 }
 
-.widget.edit .widget-body {
+/* 편집 모드: 위젯 본문을 잡아 드래그 → move 커서. 단 입력/버튼은 기본 커서 */
+.widget.edit {
+  cursor: move;
+}
+
+.widget.edit textarea,
+.widget.edit input,
+.widget.edit button,
+.widget.edit a {
+  cursor: auto;
+}
+
+/* 편집 모드에서 iframe 이 포인터를 가로채면 드래그가 안 되므로 비활성화 */
+.widget.edit iframe {
   pointer-events: none;
 }
 
@@ -87,12 +100,6 @@ button {
   flex: 1;
   min-height: 0;
   overflow: auto;
-}
-
-.widget-drag-overlay {
-  position: absolute;
-  inset: 0;
-  cursor: move;
 }
 
 .widget-resize {
