@@ -1,39 +1,72 @@
 import { useEffect, useRef, useState } from 'react';
+import HomeFrame from './HomeFrame.jsx';
 
 /**
  * 무한 캔버스. 빈 공간 드래그로 패닝, 휠로 줌.
  * 자식(위젯 레이어)은 pan/zoom transform 이 적용된 .canvas-layer 안에 렌더링.
  */
-export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBackgroundClick, children }) {
+export default function Canvas({
+  viewport,
+  editMode,
+  panEnabled,
+  zoomEnabled,
+  homeRect,
+  onHomeChange,
+  onHomeCommit,
+  viewFrame,
+  onViewFrameChange,
+  onViewFrameCommit,
+  onAddAt,
+  onQuickAdd,
+  onBackgroundClick,
+  children,
+}) {
   const { pan, zoom, zoomAt, panBy, screenToWorld } = viewport;
   const rootRef = useRef(null);
   const panning = useRef(null);
   const pointers = useRef(new Map()); // pointerId -> {x,y} (핀치용)
   const pinch = useRef(null); // { dist, cx, cy }
+  const wheelSess = useRef({ el: null, start: 0, last: 0 }); // 위젯 위 휠 세션
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
-  const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
-
-  // 리사이즈 시 "홈 프레임"(처음 화면 영역) 크기 갱신
-  useEffect(() => {
-    const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
 
   // 휠 줌은 passive:false 가 필요하므로 직접 리스너 등록
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
     const onWheel = (e) => {
-      if (editMode) {
-        // 편집 모드: 휠 = 확대/축소
+      if (e.ctrlKey) {
+        // 핀치(트랙패드)/Ctrl+휠 = 확대/축소 (편집 + 잠금 해제일 때만)
+        if (zoomEnabled) {
+          e.preventDefault();
+          const rect = el.getBoundingClientRect();
+          const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+          zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
+        }
+        return;
+      }
+
+      const body = e.target.closest && e.target.closest('.widget-body');
+      const scrollable = body && body.scrollHeight - body.clientHeight > 1;
+
+      if (scrollable) {
+        if (!panEnabled) return; // 잠금 보기: 보드 못 움직이므로 위젯이 바로 스크롤
+        // 같은 위젯 위에서 0.5초 넘게 계속 스크롤하면 그때 위젯 내부 스크롤로 전환
+        const now = Date.now();
+        const s = wheelSess.current;
+        const cont = s.el === body && now - s.last < 250;
+        if (!cont) { s.el = body; s.start = now; }
+        s.last = now;
+        if (now - s.start >= 500) return; // 위젯 스크롤 허용
+        // 아직 0.5초 안 됨 → 보드 이동
         e.preventDefault();
-        const rect = el.getBoundingClientRect();
-        const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-        zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
-      } else if (panEnabled) {
-        // 잠금 해제 보기: 휠 = 스크롤(이동), 확대는 안 함
+        panBy(-e.deltaX, -e.deltaY);
+        return;
+      }
+
+      wheelSess.current.el = null;
+      // 일반 스크롤 = 보드 이동 (편집 모드이거나 잠금 해제 보기)
+      if (panEnabled) {
         e.preventDefault();
         panBy(-e.deltaX, -e.deltaY);
       }
@@ -41,7 +74,7 @@ export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBack
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [zoomAt, panBy, editMode, panEnabled]);
+  }, [zoomAt, panBy, editMode, panEnabled, zoomEnabled]);
 
   function dist(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
@@ -64,7 +97,7 @@ export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBack
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    if (pointers.current.size === 2 && editMode) {
+    if (pointers.current.size === 2 && zoomEnabled) {
       // 두 손가락 → 핀치 줌 (편집 모드에서만), 패닝 중단
       panning.current = null;
       const [a, b] = [...pointers.current.values()];
@@ -112,6 +145,13 @@ export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBack
     setGrabbing(false);
   }
 
+  function onDblClick(e) {
+    if (!isBackground(e)) return;
+    const rect = rootRef.current.getBoundingClientRect();
+    const world = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+    onQuickAdd?.(world);
+  }
+
   function onContextMenu(e) {
     if (!isBackground(e)) return;
     e.preventDefault();
@@ -127,6 +167,8 @@ export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBack
     ['link', '링크 카드'],
     ['embed', '임베드'],
     ['github', '깃허브 카드'],
+    ['draw', '그림'],
+    ['viewbtn', '뷰 버튼'],
   ];
 
   return (
@@ -136,20 +178,44 @@ export default function Canvas({ viewport, editMode, panEnabled, onAddAt, onBack
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onDoubleClick={onDblClick}
       onContextMenu={onContextMenu}
     >
       <div
         className="canvas-layer"
         style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
       >
-        {editMode && (
-          <div className="home-frame" style={{ left: 0, top: 0, width: size.w, height: size.h }} />
+        {editMode && homeRect && (
+          <HomeFrame
+            rect={homeRect}
+            editMode={editMode}
+            zoom={zoom}
+            aspect={window.innerWidth / window.innerHeight}
+            onChange={onHomeChange}
+            onCommit={onHomeCommit}
+          />
+        )}
+        {editMode && viewFrame && (
+          <HomeFrame
+            rect={viewFrame}
+            editMode={editMode}
+            zoom={zoom}
+            aspect={window.innerWidth / window.innerHeight}
+            tone="light"
+            label="뷰 영역"
+            onChange={onViewFrameChange}
+            onCommit={onViewFrameCommit}
+          />
         )}
         {children}
       </div>
 
       {menu && (
-        <div className="context-menu" style={{ left: menu.x, top: menu.y }}>
+        <div
+          className="context-menu"
+          style={{ left: menu.x, top: menu.y }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
           {types.map(([type, label]) => (
             <button
               key={type}

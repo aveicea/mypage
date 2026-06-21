@@ -86,6 +86,44 @@ export function resolveConfig() {
   return loadStoredConfig();
 }
 
+/** 홈(처음 보일 영역) rect 는 기기/보드별 뷰 설정이라 localStorage 에 둔다 */
+export function loadHomeRect(dbId) {
+  try {
+    const r = JSON.parse(localStorage.getItem('widget-board:home:' + dbId));
+    if (r && r.width && r.height) return r;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export function saveHomeRect(dbId, rect) {
+  try {
+    localStorage.setItem('widget-board:home:' + dbId, JSON.stringify(rect));
+  } catch (e) {
+    console.error('홈 영역 저장 실패(localStorage):', e);
+  }
+}
+
+/** 저장된 뷰(북마크) 목록 — 기기별 localStorage */
+export function loadViews(dbId) {
+  try {
+    const v = JSON.parse(localStorage.getItem('widget-board:views:' + dbId));
+    if (Array.isArray(v)) return v;
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+export function saveViews(dbId, views) {
+  try {
+    localStorage.setItem('widget-board:views:' + dbId, JSON.stringify(views));
+  } catch (e) {
+    console.error('뷰 저장 실패(localStorage):', e);
+  }
+}
+
 /** 인코딩된 config 를 포함한 전체 보드 URL 생성 */
 export function buildShareUrl(config) {
   const encoded = encodeConfig(config);

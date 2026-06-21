@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { resolveConfig, getDeviceId } from '../config.js';
+import { resolveConfig, getDeviceId, loadHomeRect, saveHomeRect, loadViews, saveViews } from '../config.js';
 import { createApi } from '../api.js';
 import { useViewport } from '../canvas/useViewport.js';
 import { useWidgetSync } from '../hooks/useWidgetSync.js';
@@ -12,6 +12,8 @@ import ImageWidget from '../widgets/ImageWidget.jsx';
 import LinkWidget from '../widgets/LinkWidget.jsx';
 import EmbedWidget from '../widgets/EmbedWidget.jsx';
 import GithubWidget from '../widgets/GithubWidget.jsx';
+import DrawWidget from '../widgets/DrawWidget.jsx';
+import ViewButtonWidget from '../widgets/ViewButtonWidget.jsx';
 import {
   PencilIcon, LockClosedIcon, LockOpenIcon, GearIcon,
   PlusIcon, MinusIcon, ResetIcon,
@@ -24,6 +26,8 @@ const DEFAULTS = {
   link: { width: 280, height: 220, content: { url: '' } },
   embed: { width: 360, height: 240, content: { url: '' } },
   github: { width: 320, height: 200, content: { url: '' } },
+  draw: { width: 300, height: 220, content: { strokes: [] } },
+  viewbtn: { width: 96, height: 34, content: { name: '뷰' } },
 };
 
 const ADD_TYPES = [
@@ -33,6 +37,8 @@ const ADD_TYPES = [
   ['link', '링크 카드'],
   ['embed', '임베드'],
   ['github', '깃허브 카드'],
+  ['draw', '그림'],
+  ['viewbtn', '뷰 버튼'],
 ];
 
 export default function Board() {
@@ -54,10 +60,92 @@ export default function Board() {
   const [selectedId, setSelectedId] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [guides, setGuides] = useState([]); // 이동 시 정렬 가이드
+  const [homeRect, setHomeRect] = useState(
+    () => loadHomeRect(config.databaseId) || { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight }
+  );
+  const homeRef = useRef(homeRect);
+  homeRef.current = homeRect;
+  const [views, setViews] = useState(() => loadViews(config.databaseId));
+  const viewsRef = useRef(views);
+  viewsRef.current = views;
+  const [activeView, setActiveView] = useState(null); // 칩으로 띄운 편집용 뷰 프레임
+  const [autoEditId, setAutoEditId] = useState(null); // 추가 직후 자동 편집할 위젯
+  const [activeWidgetId, setActiveWidgetId] = useState(null); // 기본 모드에서 임시 편집 활성 위젯
+  const undoStack = useRef([]); // 되돌리기 (추가/삭제/이동/리사이즈)
+  const pushUndo = (entry) => {
+    undoStack.current.push(entry);
+    if (undoStack.current.length > 50) undoStack.current.shift();
+  };
 
-  // 패닝 가능 조건: 편집 모드이거나, 보기 모드에서 잠금 해제일 때
+  function captureRect() {
+    const z = viewport.zoom;
+    return {
+      x: -viewport.pan.x / z,
+      y: -viewport.pan.y / z,
+      width: window.innerWidth / z,
+      height: window.innerHeight / z,
+    };
+  }
+  function addView() {
+    const name = window.prompt('뷰 이름', '뷰 ' + (views.length + 1));
+    if (name == null) return;
+    const next = [...views, { id: 'v' + Date.now(), name: name || '뷰 ' + (views.length + 1), rect: captureRect() }];
+    setViews(next);
+    saveViews(config.databaseId, next);
+  }
+  function removeView(id) {
+    const next = views.filter((v) => v.id !== id);
+    setViews(next);
+    saveViews(config.databaseId, next);
+  }
+
+  // 홈 프레임: 이동하면 그 위치를 기준으로 모든 위젯 재배치(프레임은 원점 유지),
+  // 리사이즈(비율 고정)는 보이는 영역(줌)만 변경
+  function handleHomeCommit(mode) {
+    const r = homeRef.current;
+    if (mode === 'move' && (Math.abs(r.x) > 0.5 || Math.abs(r.y) > 0.5)) {
+      widgets.forEach((w) => updateWidget(w.id, { x: w.x - r.x, y: w.y - r.y }, { commit: true }));
+      const reset = { x: 0, y: 0, width: r.width, height: r.height };
+      setHomeRect(reset);
+      saveHomeRect(config.databaseId, reset);
+    } else {
+      saveHomeRect(config.databaseId, r);
+    }
+  }
+
+  // 삭제(되돌리기 가능)
+  function boardRemove(id) {
+    const w = widgets.find((x) => x.id === id);
+    if (w) pushUndo({ kind: 'delete', widget: { ...w } });
+    removeWidget(id);
+    if (selectedId === id) setSelectedId(null);
+  }
+
+  function doUndo() {
+    const e = undoStack.current.pop();
+    if (!e) return;
+    if (e.kind === 'geom') {
+      updateWidget(e.id, { x: e.x, y: e.y, width: e.width, height: e.height }, { commit: true });
+    } else if (e.kind === 'add') {
+      removeWidget(e.id);
+    } else if (e.kind === 'delete') {
+      addWidget(e.widget);
+    }
+  }
+
+  // 첫 로드 시 홈 영역으로 맞춤 (한 번만)
+  const didFit = useRef(false);
+  useEffect(() => {
+    if (didFit.current) return;
+    didFit.current = true;
+    viewport.fitTo(homeRef.current);
+  }, [viewport]);
+
+  // 패닝: 편집 모드이거나 잠금 해제 보기. 확대: 편집 + 잠금 해제일 때만.
   const panEnabled = editMode || !locked;
+  const zoomEnabled = editMode && !locked;
   const maxZ = widgets.reduce((m, w) => Math.max(m, w.zIndex || 1), 1);
+  const minZ = widgets.reduce((m, w) => Math.min(m, w.zIndex || 1), 1);
 
   // 단축키
   useEffect(() => {
@@ -69,16 +157,21 @@ export default function Board() {
         setMenuOpen(false);
         return;
       }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !typing) {
+        e.preventDefault();
+        doUndo();
+        return;
+      }
       if (typing) return;
       if (editMode && selectedId && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
-        removeWidget(selectedId);
-        setSelectedId(null);
+        boardRemove(selectedId);
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editMode, selectedId, removeWidget]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode, selectedId, widgets]);
 
   function selectWidget(id) {
     setSelectedId(id);
@@ -89,6 +182,8 @@ export default function Board() {
   async function handleAdd(type, world) {
     const def = DEFAULTS[type] || DEFAULTS.text;
     const pos = world || viewport.screenToWorld(window.innerWidth / 2, window.innerHeight / 2);
+    // 뷰 버튼은 생성 시 현재 화면을 가리키도록 저장
+    const content = type === 'viewbtn' ? { name: '뷰', rect: captureRect() } : def.content;
     const widget = {
       type,
       name: `${type}-${Date.now()}`,
@@ -97,20 +192,43 @@ export default function Board() {
       width: def.width,
       height: def.height,
       zIndex: maxZ + 1,
-      content: def.content,
+      content,
     };
     const created = await addWidget(widget);
-    if (created) setSelectedId(created.id);
+    if (created) {
+      setSelectedId(created.id);
+      pushUndo({ kind: 'add', id: created.id });
+    }
     setMenuOpen(false);
+    return created;
   }
 
   function renderWidgetContent(w) {
-    const common = { widget: w, editMode, api, onChange: (patch, opts) => updateWidget(w.id, patch, opts) };
+    const common = {
+      widget: w,
+      editMode,
+      api,
+      deviceId,
+      onRequestEdit: () => {
+        setEditMode(true);
+        setLocked(false);
+        setSelectedId(w.id);
+      },
+      onJumpTo: (rect) => viewport.fitTo(rect),
+      getCurrentRect: captureRect,
+      savedViews: views,
+      autoEdit: autoEditId === w.id,
+      onAutoEdited: () => setAutoEditId(null),
+      onAutoEmpty: () => { boardRemove(w.id); setActiveWidgetId(null); },
+      onChange: (patch, opts) => updateWidget(w.id, patch, opts),
+    };
     switch (w.type) {
       case 'image': return <ImageWidget {...common} />;
       case 'link': return <LinkWidget {...common} />;
       case 'embed': return <EmbedWidget {...common} />;
       case 'github': return <GithubWidget {...common} />;
+      case 'draw': return <DrawWidget {...common} />;
+      case 'viewbtn': return <ViewButtonWidget {...common} />;
       case 'postit':
       case 'text':
       default: return <TextWidget {...common} />;
@@ -123,8 +241,23 @@ export default function Board() {
         viewport={viewport}
         editMode={editMode}
         panEnabled={panEnabled}
+        zoomEnabled={zoomEnabled}
+        homeRect={homeRect}
+        onHomeChange={setHomeRect}
+        onHomeCommit={handleHomeCommit}
+        viewFrame={editMode && activeView ? (views.find((v) => v.id === activeView)?.rect || null) : null}
+        onViewFrameChange={(rect) => setViews((vs) => vs.map((v) => (v.id === activeView ? { ...v, rect } : v)))}
+        onViewFrameCommit={() => saveViews(config.databaseId, viewsRef.current)}
         onAddAt={handleAdd}
-        onBackgroundClick={() => setSelectedId(null)}
+        onQuickAdd={async (world) => {
+          const w = await handleAdd('text', world);
+          if (w) {
+            setAutoEditId(w.id); // 그 위젯만 편집 시작 (편집모드 전환 X)
+            setActiveWidgetId(w.id); // 그 위젯만 이동/크기조절 가능
+            setSelectedId(w.id);
+          }
+        }}
+        onBackgroundClick={() => { setSelectedId(null); setActiveWidgetId(null); }}
       >
         {widgets.map((w) => (
           <WidgetFrame
@@ -132,13 +265,14 @@ export default function Board() {
             widget={w}
             zoom={viewport.zoom}
             editMode={editMode}
-            selected={editMode && selectedId === w.id}
+            interactive={editMode || activeWidgetId === w.id}
+            selected={(editMode && selectedId === w.id) || activeWidgetId === w.id}
             onSelect={selectWidget}
             onChange={(patch, opts) => updateWidget(w.id, patch, opts)}
-            onDelete={(id) => {
-              removeWidget(id);
-              if (selectedId === id) setSelectedId(null);
-            }}
+            onDragStart={() => pushUndo({ kind: 'geom', id: w.id, x: w.x, y: w.y, width: w.width, height: w.height })}
+            onBringFront={(id) => updateWidget(id, { zIndex: maxZ + 1 }, { commit: true })}
+            onSendBack={(id) => updateWidget(id, { zIndex: minZ - 1 }, { commit: true })}
+            onDelete={(id) => boardRemove(id)}
             others={editMode ? widgets.filter((x) => x.id !== w.id) : []}
             setGuides={setGuides}
           >
@@ -173,8 +307,8 @@ export default function Board() {
         </div>
       )}
 
-      {/* 우하단: 줌 컨트롤 (편집 모드에서만) */}
-      {editMode && (
+      {/* 우하단: 줌 컨트롤 (편집 + 잠금 해제일 때만) */}
+      {zoomEnabled && (
         <div className="zoom-controls">
           <button className="icon-btn" title="축소" onClick={() => viewport.zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.1)}>
             <MinusIcon />
@@ -183,15 +317,71 @@ export default function Board() {
           <button className="icon-btn" title="확대" onClick={() => viewport.zoomAt(innerWidth / 2, innerHeight / 2, 1.1)}>
             <PlusIcon />
           </button>
-          <button className="icon-btn" title="리셋" onClick={viewport.reset}>
+          <button className="icon-btn" title="리셋" onClick={() => viewport.fitTo(homeRect)}>
             <ResetIcon />
           </button>
         </div>
       )}
 
-      {/* 좌하단: 잠금 / 설정 / 편집 토글 */}
+      {/* 상단 중앙: 저장된 뷰(북마크) */}
+      {(views.length > 0 || editMode) && (
+        <div className="views-bar">
+          {views.map((v) => (
+            <span key={v.id} className={`view-chip ${activeView === v.id ? 'active' : ''}`}>
+              <button
+                className="view-go"
+                title={editMode ? '클릭: 영역 표시/이동' : v.name}
+                onClick={() => {
+                  if (editMode) setActiveView((cur) => (cur === v.id ? null : v.id));
+                  else viewport.fitTo(v.rect);
+                }}
+              >
+                {v.name}
+              </button>
+              {editMode && (
+                <button
+                  className="view-del"
+                  title="삭제"
+                  onClick={() => {
+                    removeView(v.id);
+                    if (activeView === v.id) setActiveView(null);
+                  }}
+                >×</button>
+              )}
+            </span>
+          ))}
+          {editMode && (
+            <button className="view-add" title="현재 화면을 뷰로 저장" onClick={addView}>+ 뷰 저장</button>
+          )}
+        </div>
+      )}
+
+      {/* 우상단: API 설정 (편집 모드에서만) */}
+      {editMode && (
+        <div className="top-right">
+          <button className="icon-btn" title="API 설정" onClick={() => navigate('/setup')}>
+            <GearIcon />
+          </button>
+        </div>
+      )}
+
+      {/* 좌하단: 편집 / (줄바꿈) 잠금 · 리셋 */}
       <div className="bottom-left">
-        {!editMode && (
+        <button
+          className={`icon-btn ${editMode ? 'active' : ''}`}
+          title={editMode ? '편집 종료' : '편집 모드'}
+          onClick={() => {
+            const entering = !editMode;
+            setEditMode(entering);
+            if (entering) setLocked(false); // 편집 진입 시 자물쇠 자동 해제
+            setSelectedId(null);
+            setMenuOpen(false);
+            setActiveView(null);
+          }}
+        >
+          <PencilIcon />
+        </button>
+        <div className="bl-row">
           <button
             className="icon-btn"
             title={locked ? '잠금됨 (탭하여 스크롤 허용)' : '스크롤 허용됨 (탭하여 고정)'}
@@ -199,23 +389,12 @@ export default function Board() {
           >
             {locked ? <LockClosedIcon /> : <LockOpenIcon />}
           </button>
-        )}
-        {editMode && (
-          <button className="icon-btn" title="API 설정" onClick={() => navigate('/setup')}>
-            <GearIcon />
-          </button>
-        )}
-        <button
-          className={`icon-btn ${editMode ? 'active' : ''}`}
-          title={editMode ? '편집 종료' : '편집 모드'}
-          onClick={() => {
-            setEditMode((v) => !v);
-            setSelectedId(null);
-            setMenuOpen(false);
-          }}
-        >
-          <PencilIcon />
-        </button>
+          {!editMode && !locked && (
+            <button className="icon-btn" title="처음 화면으로" onClick={() => viewport.fitTo(homeRect)}>
+              <ResetIcon />
+            </button>
+          )}
+        </div>
       </div>
 
       {status === 'loading' && <div className="toast">Notion 에서 불러오는 중…</div>}
