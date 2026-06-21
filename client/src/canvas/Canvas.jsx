@@ -183,7 +183,7 @@ export default function Canvas({
     >
       <div
         className="canvas-layer"
-        style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
+        style={{ transform: `translate(${Math.round(pan.x)}px, ${Math.round(pan.y)}px) scale(${zoom})` }}
       >
         {editMode && homeRect && (
           <HomeFrame
