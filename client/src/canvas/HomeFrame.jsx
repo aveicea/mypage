@@ -1,10 +1,10 @@
 import { useRef } from 'react';
 
 /**
- * "처음 보일 영역" 가이드. 편집 모드에서는 상단 탭으로 이동, 코너로 크기 조절.
+ * 영역 가이드(홈 화면 / 뷰 영역). 편집 모드에서는 상단 탭으로 이동, 코너로 크기 조절.
  * 내부는 pointer-events 를 막지 않도록(테두리/핸들만 잡힘) 처리.
  */
-export default function HomeFrame({ rect, editMode, zoom, onChange, onCommit }) {
+export default function HomeFrame({ rect, editMode, zoom, onChange, onCommit, tone = 'dark', label = '홈 화면 영역' }) {
   const drag = useRef(null);
 
   function startMove(e) {
@@ -46,18 +46,13 @@ export default function HomeFrame({ rect, editMode, zoom, onChange, onCommit }) 
 
   return (
     <div
-      className="home-frame"
+      className={`home-frame ${tone === 'light' ? 'home-frame--light' : ''}`}
       style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
     >
       {editMode && (
         <>
-          <div
-            className="home-move"
-            onPointerDown={startMove}
-            onPointerMove={onMove}
-            onPointerUp={onUp}
-          >
-            홈 화면 영역
+          <div className="home-move" onPointerDown={startMove} onPointerMove={onMove} onPointerUp={onUp}>
+            {label}
           </div>
           {['nw', 'ne', 'sw', 'se'].map((dir) => (
             <div

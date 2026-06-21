@@ -13,6 +13,9 @@ export default function Canvas({
   homeRect,
   onHomeChange,
   onHomeCommit,
+  viewFrame,
+  onViewFrameChange,
+  onViewFrameCommit,
   onAddAt,
   onQuickAdd,
   onBackgroundClick,
@@ -189,6 +192,17 @@ export default function Canvas({
             zoom={zoom}
             onChange={onHomeChange}
             onCommit={onHomeCommit}
+          />
+        )}
+        {viewFrame && (
+          <HomeFrame
+            rect={viewFrame}
+            editMode={editMode}
+            zoom={zoom}
+            tone="light"
+            label="뷰 영역"
+            onChange={onViewFrameChange}
+            onCommit={onViewFrameCommit}
           />
         )}
         {children}

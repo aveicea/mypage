@@ -27,7 +27,7 @@ const DEFAULTS = {
   embed: { width: 360, height: 240, content: { url: '' } },
   github: { width: 320, height: 200, content: { url: '' } },
   draw: { width: 300, height: 220, content: { strokes: [] } },
-  viewbtn: { width: 130, height: 46, content: { name: '뷰' } },
+  viewbtn: { width: 96, height: 34, content: { name: '뷰' } },
 };
 
 const ADD_TYPES = [
@@ -66,6 +66,9 @@ export default function Board() {
   const homeRef = useRef(homeRect);
   homeRef.current = homeRect;
   const [views, setViews] = useState(() => loadViews(config.databaseId));
+  const viewsRef = useRef(views);
+  viewsRef.current = views;
+  const [activeView, setActiveView] = useState(null); // 칩으로 띄운 편집용 뷰 프레임
 
   function captureRect() {
     const z = viewport.zoom;
@@ -162,6 +165,7 @@ export default function Board() {
       },
       onJumpTo: (rect) => viewport.fitTo(rect),
       getCurrentRect: captureRect,
+      savedViews: views,
       onChange: (patch, opts) => updateWidget(w.id, patch, opts),
     };
     switch (w.type) {
@@ -187,6 +191,9 @@ export default function Board() {
         homeRect={homeRect}
         onHomeChange={setHomeRect}
         onHomeCommit={() => saveHomeRect(config.databaseId, homeRef.current)}
+        viewFrame={editMode && activeView ? (views.find((v) => v.id === activeView)?.rect || null) : null}
+        onViewFrameChange={(rect) => setViews((vs) => vs.map((v) => (v.id === activeView ? { ...v, rect } : v)))}
+        onViewFrameCommit={() => saveViews(config.databaseId, viewsRef.current)}
         onAddAt={handleAdd}
         onQuickAdd={(world) => {
           setEditMode(true);
@@ -261,12 +268,26 @@ export default function Board() {
       {(views.length > 0 || editMode) && (
         <div className="views-bar">
           {views.map((v) => (
-            <span key={v.id} className="view-chip">
-              <button className="view-go" title={v.name} onClick={() => viewport.fitTo(v.rect)}>
+            <span key={v.id} className={`view-chip ${activeView === v.id ? 'active' : ''}`}>
+              <button
+                className="view-go"
+                title={editMode ? '클릭: 영역 표시/이동' : v.name}
+                onClick={() => {
+                  if (editMode) setActiveView((cur) => (cur === v.id ? null : v.id));
+                  else viewport.fitTo(v.rect);
+                }}
+              >
                 {v.name}
               </button>
               {editMode && (
-                <button className="view-del" title="삭제" onClick={() => removeView(v.id)}>×</button>
+                <button
+                  className="view-del"
+                  title="삭제"
+                  onClick={() => {
+                    removeView(v.id);
+                    if (activeView === v.id) setActiveView(null);
+                  }}
+                >×</button>
               )}
             </span>
           ))}
@@ -296,6 +317,7 @@ export default function Board() {
             if (entering) setLocked(false); // 편집 진입 시 자물쇠 자동 해제
             setSelectedId(null);
             setMenuOpen(false);
+            setActiveView(null);
           }}
         >
           <PencilIcon />
