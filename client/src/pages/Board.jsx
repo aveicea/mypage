@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { resolveConfig, getDeviceId, loadHomeRect, saveHomeRect, loadViews, saveViews } from '../config.js';
+import { resolveConfig, getDeviceId, getDeviceName, setDeviceName, saveHomeRect, loadViews, saveViews } from '../config.js';
 import { createApi } from '../api.js';
 import { useViewport } from '../canvas/useViewport.js';
 import { useWidgetSync } from '../hooks/useWidgetSync.js';
@@ -16,7 +16,7 @@ import DrawWidget from '../widgets/DrawWidget.jsx';
 import ViewButtonWidget from '../widgets/ViewButtonWidget.jsx';
 import {
   PencilIcon, LockClosedIcon, LockOpenIcon, GearIcon,
-  PlusIcon, MinusIcon, ResetIcon, LayersIcon,
+  PlusIcon, MinusIcon, ResetIcon, LayersIcon, MonitorIcon,
 } from '../widgets/icons.jsx';
 
 const TYPE_LABEL = {
@@ -62,8 +62,12 @@ export default function Board() {
 
   const api = useMemo(() => createApi(config), [config]);
   const deviceId = useMemo(() => getDeviceId(), []);
+  const [deviceName, setDeviceNameState] = useState(() => getDeviceName());
   const viewport = useViewport();
-  const { widgets, status, error, updateWidget, addWidget, removeWidget } = useWidgetSync(api, deviceId);
+  const {
+    widgets, status, error, updateWidget, addWidget, removeWidget,
+    listDeviceLayouts, clearDeviceLayout, copyDeviceLayout,
+  } = useWidgetSync(api, deviceId, { deviceName });
 
   const [editMode, setEditMode] = useState(false); // ✏️ 항상 보기 모드로 시작
   const [locked, setLocked] = useState(true); // 🔒 기본은 화면 완전 고정
@@ -73,8 +77,9 @@ export default function Board() {
   const [menuOpen, setMenuOpen] = useState(false);
   const movePositions = useRef(null); // 그룹 이동 시작 위치 스냅샷
   const [guides, setGuides] = useState([]); // 이동 시 정렬 가이드
+  // 홈 프레임은 항상 "이 기기 화면 = 원점·100%"를 뜻하는 기준틀 (창 크기로 초기화)
   const [homeRect, setHomeRect] = useState(
-    () => loadHomeRect(config.databaseId) || { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight }
+    () => ({ x: 0, y: 0, width: window.innerWidth, height: window.innerHeight })
   );
   const homeRef = useRef(homeRect);
   homeRef.current = homeRect;
@@ -85,6 +90,7 @@ export default function Board() {
   const [autoEditId, setAutoEditId] = useState(null); // 추가 직후 자동 편집할 위젯
   const [activeWidgetId, setActiveWidgetId] = useState(null); // 기본 모드에서 임시 편집 활성 위젯
   const [orderPanel, setOrderPanel] = useState(false); // 위젯 순서 사이드바
+  const [devicePanel, setDevicePanel] = useState(false); // 기기/위치 관리 패널
   const dragOrderId = useRef(null);
 
   function reorderTo(srcId, dstId) {
@@ -140,18 +146,34 @@ export default function Board() {
     saveViews(config.databaseId, next);
   }
 
-  // 홈 프레임: 이동하면 그 위치를 기준으로 모든 위젯 재배치(프레임은 원점 유지),
-  // 리사이즈(비율 고정)는 보이는 영역(줌)만 변경
-  function handleHomeCommit(mode) {
+  // 홈 프레임 = "정가운데 100%" 기준틀. 프레임을 옮기거나 크기를 바꾸면,
+  // 그 영역이 기본 화면(원점·창 크기)이 되도록 모든 위젯의 위치 + 크기를 재계산한다.
+  // (프레임 자체는 항상 원점·창 크기로 리셋)
+  function handleHomeCommit() {
     const r = homeRef.current;
-    if (mode === 'move' && (Math.abs(r.x) > 0.5 || Math.abs(r.y) > 0.5)) {
-      widgets.forEach((w) => updateWidget(w.id, { x: w.x - r.x, y: w.y - r.y }, { commit: true }));
-      const reset = { x: 0, y: 0, width: r.width, height: r.height };
-      setHomeRect(reset);
-      saveHomeRect(config.databaseId, reset);
-    } else {
-      saveHomeRect(config.databaseId, r);
+    const Wc = window.innerWidth;
+    const Hc = window.innerHeight;
+    const s = r.width ? Wc / r.width : 1; // 비율 고정이라 가로 기준 스케일 = 세로 기준 스케일
+    const moved = Math.abs(r.x) > 0.5 || Math.abs(r.y) > 0.5;
+    const scaled = Math.abs(s - 1) > 0.001;
+    if (moved || scaled) {
+      widgets.forEach((w) =>
+        updateWidget(
+          w.id,
+          {
+            x: (w.x - r.x) * s,
+            y: (w.y - r.y) * s,
+            width: w.width * s,
+            height: w.height * s,
+          },
+          { commit: true }
+        )
+      );
     }
+    const reset = { x: 0, y: 0, width: Wc, height: Hc };
+    setHomeRect(reset);
+    saveHomeRect(config.databaseId, reset);
+    viewport.fitTo(reset); // 정가운데 100%로 보기
   }
 
   // 삭제(되돌리기 가능)
@@ -187,6 +209,8 @@ export default function Board() {
   const zoomEnabled = editMode && !locked;
   const maxZ = widgets.reduce((m, w) => Math.max(m, w.zIndex || 1), 1);
   const minZ = widgets.reduce((m, w) => Math.min(m, w.zIndex || 1), 1);
+  // 이 보드에 위치를 저장한 다른 기기 목록
+  const otherDevices = editMode ? listDeviceLayouts().filter((d) => d.id !== deviceId) : [];
 
   // 단축키
   useEffect(() => {
@@ -444,6 +468,63 @@ export default function Board() {
         </div>
       )}
 
+      {/* 좌측: 기기/위치 관리 토글 */}
+      {editMode && (
+        <button
+          className={`device-toggle icon-btn ${devicePanel ? 'active' : ''}`}
+          title="기기/위치 관리"
+          onClick={() => setDevicePanel((v) => !v)}
+        >
+          <MonitorIcon />
+        </button>
+      )}
+
+      {/* 기기/위치 관리 패널 */}
+      {editMode && devicePanel && (
+        <div className="device-panel">
+          <div className="order-title">이 기기 위치 정보</div>
+          <input
+            className="dev-name"
+            value={deviceName}
+            placeholder="이 기기 이름"
+            onChange={(e) => { setDeviceNameState(e.target.value); setDeviceName(e.target.value); }}
+          />
+          <button
+            className="dev-btn dev-danger"
+            onClick={async () => {
+              if (window.confirm('이 기기에 저장된 모든 위젯 위치/크기를 삭제할까요?\n공통 기본값으로 돌아갑니다.')) {
+                await clearDeviceLayout();
+              }
+            }}
+          >
+            이 기기 위치 전부 삭제
+          </button>
+
+          <div className="order-title">다른 기기에서 가져오기</div>
+          <div className="dev-list">
+            {otherDevices.length === 0 && <div className="order-empty">다른 기기 없음</div>}
+            {otherDevices.map((d) => (
+              <div key={d.id} className="dev-row">
+                <span className="dev-rname">
+                  {d.name || '기기'} <span className="dev-id">#{d.id.slice(-4)}</span>
+                  <span className="dev-count">{d.count}개</span>
+                </span>
+                <button
+                  className="dev-btn"
+                  onClick={async () => {
+                    if (window.confirm(`'${d.name || d.id.slice(-4)}'의 위치로 이 기기 배치를 덮어쓸까요?`)) {
+                      await copyDeviceLayout(d.id);
+                    }
+                  }}
+                >
+                  덮어쓰기
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 상단 중앙: 저장된 뷰(북마크) */}
       {(views.length > 0 || editMode) && (
         <div className="views-bar">
@@ -518,7 +599,7 @@ export default function Board() {
         </div>
       </div>
 
-      {status === 'loading' && <div className="toast">Notion 에서 불러오는 중…</div>}
+      {status === 'loading' && <div className="toast">로딩 중…</div>}
       {status === 'error' && (
         <div className="toast toast-error">
           오류: {error} <button className="icon-btn" onClick={() => navigate('/setup')}><GearIcon /></button>
