@@ -11,7 +11,6 @@ import TextWidget from '../widgets/TextWidget.jsx';
 import ImageWidget from '../widgets/ImageWidget.jsx';
 import LinkWidget from '../widgets/LinkWidget.jsx';
 import EmbedWidget from '../widgets/EmbedWidget.jsx';
-import GithubWidget from '../widgets/GithubWidget.jsx';
 import DrawWidget from '../widgets/DrawWidget.jsx';
 import ViewButtonWidget from '../widgets/ViewButtonWidget.jsx';
 import {
@@ -21,7 +20,7 @@ import {
 
 const TYPE_LABEL = {
   text: '텍스트', postit: '포스트잇', image: '이미지', link: '링크',
-  embed: '임베드', github: '깃허브', draw: '그림', viewbtn: '뷰 버튼',
+  embed: '임베드', draw: '그림', viewbtn: '뷰 버튼',
 };
 function widgetLabel(w) {
   const t = TYPE_LABEL[w.type] || w.type;
@@ -35,7 +34,6 @@ const DEFAULTS = {
   image: { width: 280, height: 200, content: { src: '' } },
   link: { width: 280, height: 220, content: { url: '' } },
   embed: { width: 360, height: 240, content: { url: '' } },
-  github: { width: 320, height: 200, content: { url: '' } },
   draw: { width: 300, height: 220, content: { strokes: [] } },
   viewbtn: { width: 96, height: 34, content: { name: '뷰' } },
 };
@@ -46,7 +44,6 @@ const ADD_TYPES = [
   ['image', '이미지'],
   ['link', '링크 카드'],
   ['embed', '임베드'],
-  ['github', '깃허브 카드'],
   ['draw', '그림'],
   ['viewbtn', '뷰 버튼'],
 ];
@@ -326,7 +323,6 @@ export default function Board() {
       case 'image': return <ImageWidget {...common} />;
       case 'link': return <LinkWidget {...common} />;
       case 'embed': return <EmbedWidget {...common} />;
-      case 'github': return <GithubWidget {...common} />;
       case 'draw': return <DrawWidget {...common} />;
       case 'viewbtn': return <ViewButtonWidget {...common} />;
       case 'postit':
@@ -428,7 +424,7 @@ export default function Board() {
         <button
           className={`order-toggle icon-btn ${orderPanel ? 'active' : ''}`}
           title="위젯 순서"
-          onClick={() => setOrderPanel((v) => !v)}
+          onClick={() => { setOrderPanel((v) => !v); setDevicePanel(false); }}
         >
           <LayersIcon />
         </button>
@@ -473,7 +469,7 @@ export default function Board() {
         <button
           className={`device-toggle icon-btn ${devicePanel ? 'active' : ''}`}
           title="기기/위치 관리"
-          onClick={() => setDevicePanel((v) => !v)}
+          onClick={() => { setDevicePanel((v) => !v); setOrderPanel(false); }}
         >
           <MonitorIcon />
         </button>

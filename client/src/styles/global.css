@@ -320,8 +320,8 @@ button {
 }
 .order-panel {
   position: fixed;
-  right: 16px;
-  bottom: 100px;
+  right: 58px;
+  bottom: 16px;
   z-index: 1001;
   width: 230px;
   max-height: 50vh;
@@ -373,7 +373,7 @@ button {
 /* 기기/위치 관리 */
 .device-toggle {
   position: fixed;
-  left: 16px;
+  right: 16px;
   bottom: 100px;
   z-index: 1000;
   background: var(--panel);
@@ -383,8 +383,8 @@ button {
 }
 .device-panel {
   position: fixed;
-  left: 16px;
-  bottom: 142px;
+  right: 58px;
+  bottom: 16px;
   z-index: 1001;
   width: 240px;
   max-height: 60vh;

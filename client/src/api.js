@@ -60,8 +60,5 @@ export function createApi(config) {
 
     og: (url) =>
       fetch(`/api/meta/og?url=${encodeURIComponent(url)}`, { headers: headers(config) }).then(handle),
-
-    github: (url) =>
-      fetch(`/api/meta/github?url=${encodeURIComponent(url)}`, { headers: headers(config) }).then(handle),
   };
 }
