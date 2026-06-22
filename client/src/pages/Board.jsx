@@ -16,6 +16,7 @@ import ViewButtonWidget from '../widgets/ViewButtonWidget.jsx';
 import {
   PencilIcon, LockClosedIcon, LockOpenIcon, GearIcon,
   PlusIcon, MinusIcon, ResetIcon, LayersIcon, MonitorIcon,
+  UndoIcon, RedoIcon,
 } from '../widgets/icons.jsx';
 
 const TYPE_LABEL = {
@@ -116,9 +117,15 @@ export default function Board() {
     });
   }
   const undoStack = useRef([]); // 되돌리기 (추가/삭제/이동/리사이즈)
+  const redoStack = useRef([]); // 앞으로가기
+  const [histVer, setHistVer] = useState(0); // 버튼 활성/비활성 갱신용
+  const bumpHist = () => setHistVer((v) => v + 1);
+  // 새 동작 기록 → 앞으로가기 스택 무효화
   const pushUndo = (entry) => {
     undoStack.current.push(entry);
-    if (undoStack.current.length > 50) undoStack.current.shift();
+    if (undoStack.current.length > 100) undoStack.current.shift();
+    redoStack.current = [];
+    bumpHist();
   };
 
   function captureRect() {
@@ -181,16 +188,44 @@ export default function Board() {
     if (selectedId === id) setSelectedId(null);
   }
 
-  function doUndo() {
+  // 히스토리 항목을 적용하고, 반대 동작(역항목)을 돌려준다 (undo↔redo 공용)
+  async function applyEntry(e) {
+    if (e.kind === 'geom') {
+      const w = widgets.find((x) => x.id === e.id);
+      const inv = w
+        ? { kind: 'geom', id: e.id, x: w.x, y: w.y, width: w.width, height: w.height }
+        : null;
+      updateWidget(e.id, { x: e.x, y: e.y, width: e.width, height: e.height }, { commit: true });
+      return inv;
+    }
+    if (e.kind === 'add') {
+      // 추가의 반대 = 삭제 (되돌릴 수 있도록 위젯 스냅샷 보관)
+      const w = widgets.find((x) => x.id === e.id);
+      removeWidget(e.id);
+      return w ? { kind: 'delete', widget: { ...w } } : null;
+    }
+    if (e.kind === 'delete') {
+      // 삭제의 반대 = 다시 생성 (새 id 부여됨)
+      const created = await addWidget(e.widget);
+      return created ? { kind: 'add', id: created.id } : null;
+    }
+    return null;
+  }
+
+  async function doUndo() {
     const e = undoStack.current.pop();
     if (!e) return;
-    if (e.kind === 'geom') {
-      updateWidget(e.id, { x: e.x, y: e.y, width: e.width, height: e.height }, { commit: true });
-    } else if (e.kind === 'add') {
-      removeWidget(e.id);
-    } else if (e.kind === 'delete') {
-      addWidget(e.widget);
-    }
+    const inv = await applyEntry(e);
+    if (inv) redoStack.current.push(inv);
+    bumpHist();
+  }
+
+  async function doRedo() {
+    const e = redoStack.current.pop();
+    if (!e) return;
+    const inv = await applyEntry(e);
+    if (inv) undoStack.current.push(inv);
+    bumpHist();
   }
 
   // 첫 로드 시 홈 영역으로 맞춤 (한 번만)
@@ -221,7 +256,13 @@ export default function Board() {
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !typing) {
         e.preventDefault();
-        doUndo();
+        if (e.shiftKey) doRedo(); // Cmd/Ctrl+Shift+Z = 앞으로가기
+        else doUndo();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y' && !typing) {
+        e.preventDefault();
+        doRedo(); // Ctrl+Y = 앞으로가기
         return;
       }
       if (typing) return;
@@ -554,9 +595,25 @@ export default function Board() {
         </div>
       )}
 
-      {/* 우상단: API 설정 (편집 모드에서만) */}
+      {/* 우상단: 되돌리기 · 앞으로가기 · API 설정 (편집 모드에서만) */}
       {editMode && (
         <div className="top-right">
+          <button
+            className="icon-btn"
+            title="되돌리기 (Cmd/Ctrl+Z)"
+            disabled={undoStack.current.length === 0}
+            onClick={doUndo}
+          >
+            <UndoIcon />
+          </button>
+          <button
+            className="icon-btn"
+            title="앞으로가기 (Cmd/Ctrl+Shift+Z)"
+            disabled={redoStack.current.length === 0}
+            onClick={doRedo}
+          >
+            <RedoIcon />
+          </button>
           <button className="icon-btn" title="API 설정" onClick={() => navigate('/setup')}>
             <GearIcon />
           </button>

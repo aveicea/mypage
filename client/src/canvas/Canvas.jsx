@@ -108,8 +108,9 @@ export default function Canvas({
       return;
     }
 
-    if (editMode) {
-      // 편집 모드: 배경 드래그 = 드래그 박스 선택
+    if (editMode && e.pointerType === 'mouse') {
+      // 편집 모드 + 마우스: 배경 드래그 = 드래그 박스 선택
+      // (모바일/터치는 아래 패닝으로 빠져 화면 이동)
       e.currentTarget.setPointerCapture(e.pointerId);
       const rect = rootRef.current.getBoundingClientRect();
       marquee.current = {

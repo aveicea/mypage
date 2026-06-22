@@ -57,6 +57,20 @@ export const ResetIcon = () => (
   </svg>
 );
 
+export const UndoIcon = () => (
+  <svg {...base}>
+    <path d="M9 14 4 9l5-5" />
+    <path d="M4 9h11a5 5 0 0 1 0 10h-1" />
+  </svg>
+);
+
+export const RedoIcon = () => (
+  <svg {...base}>
+    <path d="m15 14 5-5-5-5" />
+    <path d="M20 9H9a5 5 0 0 0 0 10h1" />
+  </svg>
+);
+
 export const MoveIcon = () => (
   <svg {...base}>
     <path d="M5 9 2 12l3 3" />
