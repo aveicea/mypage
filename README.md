@@ -29,7 +29,7 @@ npm run dev            # server(8787) + client(5173) 동시 실행
 | 논리 필드 | 권장 이름 | 타입 |
 |---|---|---|
 | 식별용 제목 | `이름` 또는 `Name` | Title |
-| 위젯 종류 | `Type` / `타입` | Select (text/image/link/embed/github) |
+| 위젯 종류 | `Type` / `타입` | Select (text/image/link/embed) |
 | 좌표 | `X`, `Y` | Number |
 | 크기 | `Width`/`너비`, `Height`/`높이` | Number |
 | 순서 | `ZIndex` / `순서` | Number |

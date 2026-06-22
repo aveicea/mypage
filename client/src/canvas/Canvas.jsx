@@ -222,7 +222,6 @@ export default function Canvas({
     ['image', '이미지'],
     ['link', '링크 카드'],
     ['embed', '임베드'],
-    ['github', '깃허브 카드'],
     ['draw', '그림'],
     ['viewbtn', '뷰 버튼'],
   ];
