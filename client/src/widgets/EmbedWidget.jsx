@@ -1,4 +1,4 @@
-import { useContext, useLayoutEffect, useRef, useState } from 'react';
+import { useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { WidgetChromeContext } from './WidgetFrame.jsx';
 
@@ -28,20 +28,6 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
   const url = content.url || '';
   // 확대 배율은 기기별로 저장 (없으면 공통 zoom, 그래도 없으면 1)
   const zoom = content.zooms?.[deviceId] ?? content.zoom ?? 1;
-
-  // CSS zoom 은 width:100% 같은 퍼센트 크기에는 적용이 상쇄돼 안 먹는다.
-  // → 컨테이너 픽셀 크기를 측정해 iframe 에 고정 px 로 주고 zoom 을 걸어야 실제로 확대됨.
-  const wrapRef = useRef(null);
-  const [size, setSize] = useState({ w: 0, h: 0 });
-  useLayoutEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const update = () => setSize({ w: el.clientWidth, h: el.clientHeight });
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [url]);
 
   function setUrl() {
     const next = window.prompt('임베드할 URL 입력 (YouTube, Notion 등)', url);
@@ -79,15 +65,21 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
     </div>
   );
 
-  // 선명하게: transform 스케일(래스터) 대신 CSS zoom(레이아웃 확대) 사용.
-  // zoom 이 먹으려면 iframe 이 퍼센트가 아니라 고정 px 크기여야 함 (측정값 사용).
+  // 위젯을 항상 꽉 채우면서 내용만 확대/축소:
+  // iframe 을 (100/zoom)% 로 깔고 transform: scale(zoom) → 어떤 배율이든 컨테이너를 채움.
+  // (축소하면 더 많은 내용이 보이고, 확대하면 내용이 커짐 — 빈 공간 안 생김)
   const iframeStyle =
-    zoom !== 1 && size.w
-      ? { width: `${size.w}px`, height: `${size.h}px`, zoom }
+    zoom !== 1
+      ? {
+          width: `${100 / zoom}%`,
+          height: `${100 / zoom}%`,
+          transform: `scale(${zoom})`,
+          transformOrigin: '0 0',
+        }
       : { width: '100%', height: '100%' };
 
   return (
-    <div className="w-embed" ref={wrapRef} onDoubleClick={() => editMode && setUrl()}>
+    <div className="w-embed" onDoubleClick={() => editMode && setUrl()}>
       {ctxEdit && selected && host && createPortal(tools, host)}
       <iframe
         src={toEmbedUrl(url)}
