@@ -67,8 +67,11 @@ export default function Board() {
 
   const [editMode, setEditMode] = useState(false); // ✏️ 항상 보기 모드로 시작
   const [locked, setLocked] = useState(true); // 🔒 기본은 화면 완전 고정
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]); // 다중 선택
+  const setSelectedId = (id) => setSelectedIds(id == null ? [] : [id]);
+  const selectedId = selectedIds[0] ?? null;
   const [menuOpen, setMenuOpen] = useState(false);
+  const movePositions = useRef(null); // 그룹 이동 시작 위치 스냅샷
   const [guides, setGuides] = useState([]); // 이동 시 정렬 가이드
   const [homeRect, setHomeRect] = useState(
     () => loadHomeRect(config.databaseId) || { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight }
@@ -201,20 +204,55 @@ export default function Board() {
         return;
       }
       if (typing) return;
-      if (editMode && selectedId && (e.key === 'Delete' || e.key === 'Backspace')) {
+      if (editMode && selectedIds.length && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
-        boardRemove(selectedId);
+        selectedIds.forEach((id) => boardRemove(id));
+        setSelectedIds([]);
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editMode, selectedId, widgets]);
+  }, [editMode, selectedIds, widgets]);
 
-  function selectWidget(id) {
-    setSelectedId(id);
-    const w = widgets.find((x) => x.id === id);
-    if (w && w.zIndex < maxZ) updateWidget(id, { zIndex: maxZ + 1 }, { commit: true });
+  function selectWidget(id, e) {
+    const additive = e && (e.metaKey || e.ctrlKey || e.shiftKey);
+    if (additive) {
+      setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    } else {
+      setSelectedIds([id]);
+    }
+  }
+
+  // 드래그 시작: 선택된 위젯들(또는 그 위젯)의 시작 위치 스냅샷 + 되돌리기 체크포인트
+  function startGroupDrag(w) {
+    const ids = selectedIds.includes(w.id) ? selectedIds : [w.id];
+    const m = new Map();
+    ids.forEach((id) => {
+      const ww = widgets.find((x) => x.id === id);
+      if (ww) {
+        m.set(id, { x: ww.x, y: ww.y });
+        pushUndo({ kind: 'geom', id, x: ww.x, y: ww.y, width: ww.width, height: ww.height });
+      }
+    });
+    movePositions.current = m;
+  }
+
+  // 그룹 이동: 시작 위치 기준으로 모두 dx,dy 이동
+  function moveSelectedBy(dx, dy, opts) {
+    const m = movePositions.current;
+    if (!m) return;
+    m.forEach((pos, id) => updateWidget(id, { x: pos.x + dx, y: pos.y + dy }, opts));
+  }
+
+  // 마퀴(드래그 박스) 선택
+  function marqueeSelect(rect, additive) {
+    const hit = widgets
+      .filter((w) =>
+        rect.x < w.x + w.width && rect.x + rect.width > w.x &&
+        rect.y < w.y + w.height && rect.y + rect.height > w.y)
+      .map((w) => w.id);
+    setSelectedIds((prev) => (additive ? Array.from(new Set([...prev, ...hit])) : hit));
   }
 
   async function handleAdd(type, world) {
@@ -295,7 +333,8 @@ export default function Board() {
             setSelectedId(w.id);
           }
         }}
-        onBackgroundClick={() => { setSelectedId(null); setActiveWidgetId(null); }}
+        onMarquee={marqueeSelect}
+        onBackgroundClick={() => { setSelectedIds([]); setActiveWidgetId(null); }}
       >
         {widgets.map((w) => (
           <WidgetFrame
@@ -304,14 +343,13 @@ export default function Board() {
             zoom={viewport.zoom}
             editMode={editMode}
             interactive={editMode || activeWidgetId === w.id}
-            selected={(editMode && selectedId === w.id) || activeWidgetId === w.id}
+            selected={(editMode && selectedIds.includes(w.id)) || activeWidgetId === w.id}
             onSelect={selectWidget}
             onChange={(patch, opts) => updateWidget(w.id, patch, opts)}
-            onDragStart={() => pushUndo({ kind: 'geom', id: w.id, x: w.x, y: w.y, width: w.width, height: w.height })}
-            onBringFront={(id) => updateWidget(id, { zIndex: maxZ + 1 }, { commit: true })}
-            onSendBack={(id) => updateWidget(id, { zIndex: minZ - 1 }, { commit: true })}
+            onDragStart={() => startGroupDrag(w)}
+            onMoveBy={moveSelectedBy}
             onDelete={(id) => boardRemove(id)}
-            others={editMode ? widgets.filter((x) => x.id !== w.id) : []}
+            others={editMode ? widgets.filter((x) => !selectedIds.includes(x.id)) : []}
             setGuides={setGuides}
           >
             {renderWidgetContent(w)}
@@ -380,7 +418,7 @@ export default function Board() {
             {[...widgets].sort((a, b) => (b.zIndex || 1) - (a.zIndex || 1)).map((w, i, arr) => (
               <div
                 key={w.id}
-                className={`order-row ${selectedId === w.id ? 'sel' : ''}`}
+                className={`order-row ${selectedIds.includes(w.id) ? 'sel' : ''}`}
                 draggable
                 onDragStart={() => { dragOrderId.current = w.id; }}
                 onDragOver={(e) => e.preventDefault()}

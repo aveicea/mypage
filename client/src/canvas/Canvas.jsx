@@ -19,6 +19,7 @@ export default function Canvas({
   onAddAt,
   onQuickAdd,
   onBackgroundClick,
+  onMarquee,
   children,
 }) {
   const { pan, zoom, zoomAt, panBy, screenToWorld } = viewport;
@@ -26,6 +27,8 @@ export default function Canvas({
   const panning = useRef(null);
   const pointers = useRef(new Map()); // pointerId -> {x,y} (핀치용)
   const pinch = useRef(null); // { dist, cx, cy }
+  const marquee = useRef(null); // 편집 모드 드래그 박스 선택
+  const [marqueeRect, setMarqueeRect] = useState(null); // 화면 좌표 오버레이
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
 
@@ -84,33 +87,53 @@ export default function Canvas({
   function onPointerDown(e) {
     if (menu) setMenu(null);
     if (!isBackground(e)) return;
-    if (e.button === 0 || e.pointerType !== 'mouse') {
-      // 배경 빈 곳 클릭 = 선택 해제
+    const additive = e.metaKey || e.ctrlKey || e.shiftKey;
+    if ((e.button === 0 || e.pointerType !== 'mouse') && !additive) {
+      // 배경 빈 곳 클릭 = 선택 해제 (커맨드/시프트면 유지)
       onBackgroundClick?.();
     }
-    if (!panEnabled) return; // 잠금 보기: 패닝 안 함
-    if (e.pointerType === 'mouse' && e.button !== 0) return; // 좌클릭만 패닝
+    if (e.pointerType === 'mouse' && e.button !== 0) return; // 좌클릭만
 
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    e.currentTarget.setPointerCapture(e.pointerId);
 
     if (pointers.current.size === 2 && zoomEnabled) {
-      // 두 손가락 → 핀치 줌 (편집 모드에서만), 패닝 중단
+      // 두 손가락 → 핀치 줌 (편집 모드에서만), 패닝/마퀴 중단
+      e.currentTarget.setPointerCapture(e.pointerId);
       panning.current = null;
+      marquee.current = null;
+      setMarqueeRect(null);
       const [a, b] = [...pointers.current.values()];
       pinch.current = { dist: dist(a, b), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
       setGrabbing(false);
-    } else {
-      panning.current = { x: e.clientX, y: e.clientY, moved: false };
-      setGrabbing(true);
+      return;
     }
+
+    if (editMode) {
+      // 편집 모드: 배경 드래그 = 드래그 박스 선택
+      e.currentTarget.setPointerCapture(e.pointerId);
+      const rect = rootRef.current.getBoundingClientRect();
+      marquee.current = {
+        sx: e.clientX,
+        sy: e.clientY,
+        ox: e.clientX - rect.left,
+        oy: e.clientY - rect.top,
+        additive,
+        moved: false,
+      };
+      return;
+    }
+
+    if (!panEnabled) return; // 잠금 보기: 패닝 안 함
+    e.currentTarget.setPointerCapture(e.pointerId);
+    panning.current = { x: e.clientX, y: e.clientY, moved: false };
+    setGrabbing(true);
   }
 
   function onPointerMove(e) {
-    if (!pointers.current.has(e.pointerId)) {
-      if (!panning.current) return;
-    } else {
+    if (pointers.current.has(e.pointerId)) {
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    } else if (!panning.current && !marquee.current) {
+      return;
     }
 
     // 핀치 줌
@@ -122,6 +145,22 @@ export default function Canvas({
       const cy = (a.y + b.y) / 2 - rect.top;
       if (pinch.current.dist > 0) zoomAt(cx, cy, d / pinch.current.dist);
       pinch.current.dist = d;
+      return;
+    }
+
+    // 드래그 박스 선택
+    if (marquee.current) {
+      const m = marquee.current;
+      const rect = rootRef.current.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      if (Math.abs(e.clientX - m.sx) + Math.abs(e.clientY - m.sy) > 2) m.moved = true;
+      setMarqueeRect({
+        left: Math.min(m.ox, cx),
+        top: Math.min(m.oy, cy),
+        width: Math.abs(cx - m.ox),
+        height: Math.abs(cy - m.oy),
+      });
       return;
     }
 
@@ -137,6 +176,26 @@ export default function Canvas({
   function onPointerUp(e) {
     pointers.current.delete(e.pointerId);
     if (pointers.current.size < 2) pinch.current = null;
+
+    if (marquee.current) {
+      const m = marquee.current;
+      marquee.current = null;
+      setMarqueeRect(null);
+      if (m.moved) {
+        const rect = rootRef.current.getBoundingClientRect();
+        const a = screenToWorld(m.ox, m.oy);
+        const b = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+        onMarquee?.(
+          {
+            x: Math.min(a.x, b.x),
+            y: Math.min(a.y, b.y),
+            width: Math.abs(b.x - a.x),
+            height: Math.abs(b.y - a.y),
+          },
+          m.additive
+        );
+      }
+    }
 
     panning.current = null;
     setGrabbing(false);
@@ -211,6 +270,18 @@ export default function Canvas({
         )}
         {children}
       </div>
+
+      {marqueeRect && (
+        <div
+          className="marquee-box"
+          style={{
+            left: marqueeRect.left,
+            top: marqueeRect.top,
+            width: marqueeRect.width,
+            height: marqueeRect.height,
+          }}
+        />
+      )}
 
       {menu && (
         <div
