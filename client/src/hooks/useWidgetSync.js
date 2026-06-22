@@ -22,7 +22,7 @@ function applyDeviceLayout(widget, deviceId) {
  * - 그 외(텍스트/색/순서 등)는 공통 저장
  * - 위젯 데이터는 절대 localStorage 에 저장하지 않음 (식별자만 별도)
  */
-export function useWidgetSync(api, deviceId, { debounceMs = 800 } = {}) {
+export function useWidgetSync(api, deviceId, { debounceMs = 800, deviceName = '' } = {}) {
   const [widgets, setWidgets] = useState([]);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState(null);
@@ -31,6 +31,20 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800 } = {}) {
   const timers = useRef(new Map());
   const widgetsRef = useRef([]);
   widgetsRef.current = widgets;
+
+  const reload = useCallback(() => {
+    setStatus('loading');
+    return api
+      .list()
+      .then((data) => {
+        setWidgets((data.widgets || []).map((w) => applyDeviceLayout(w, deviceId)));
+        setStatus('ready');
+      })
+      .catch((e) => {
+        setError(e.message);
+        setStatus('error');
+      });
+  }, [api, deviceId]);
 
   useEffect(() => {
     let alive = true;
@@ -83,7 +97,7 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800 } = {}) {
               ...(nw.content || {}),
               layouts: {
                 ...(nw.content?.layouts || {}),
-                [deviceId]: { x: nw.x, y: nw.y, width: nw.width, height: nw.height },
+                [deviceId]: { x: nw.x, y: nw.y, width: nw.width, height: nw.height, name: deviceName },
               },
             };
           }
@@ -101,7 +115,7 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800 } = {}) {
           ...baseContent,
           layouts: {
             ...(merged.content?.layouts || {}),
-            [deviceId]: { x: merged.x, y: merged.y, width: merged.width, height: merged.height },
+            [deviceId]: { x: merged.x, y: merged.y, width: merged.width, height: merged.height, name: deviceName },
           },
         };
       }
@@ -113,8 +127,65 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800 } = {}) {
       if (commit) flush(id);
       else timers.current.set(id, setTimeout(() => flush(id), debounceMs));
     },
-    [flush, debounceMs, deviceId]
+    [flush, debounceMs, deviceId, deviceName]
   );
+
+  // 이 보드에 위치 정보(layout)를 저장한 기기 목록 (현재 기기 제외 여부는 호출부에서)
+  const listDeviceLayouts = useCallback(() => {
+    const map = new Map(); // id -> { id, name, count }
+    widgetsRef.current.forEach((w) => {
+      const L = w.content?.layouts;
+      if (!L) return;
+      for (const id of Object.keys(L)) {
+        const cur = map.get(id) || { id, name: L[id]?.name || '', count: 0 };
+        if (!cur.name && L[id]?.name) cur.name = L[id].name;
+        cur.count += 1;
+        map.set(id, cur);
+      }
+    });
+    return [...map.values()];
+  }, []);
+
+  // 이 기기의 위치 정보 전부 삭제 → 위젯이 공통(기본) 위치/크기로 복귀
+  const clearDeviceLayout = useCallback(async () => {
+    const jobs = [];
+    widgetsRef.current.forEach((w) => {
+      const L = w.content?.layouts;
+      if (L && L[deviceId]) {
+        const next = { ...L };
+        delete next[deviceId];
+        jobs.push(api.update(w.id, { content: { ...w.content, layouts: next } }));
+      }
+    });
+    try {
+      await Promise.all(jobs);
+    } catch (e) {
+      setError(e.message);
+    }
+    await reload();
+  }, [api, deviceId, reload]);
+
+  // 다른 기기의 위치 정보를 이 기기로 덮어쓰기
+  const copyDeviceLayout = useCallback(async (srcId) => {
+    if (!srcId || srcId === deviceId) return;
+    const jobs = [];
+    widgetsRef.current.forEach((w) => {
+      const src = w.content?.layouts?.[srcId];
+      if (src) {
+        const next = {
+          ...(w.content?.layouts || {}),
+          [deviceId]: { x: src.x, y: src.y, width: src.width, height: src.height, name: deviceName },
+        };
+        jobs.push(api.update(w.id, { content: { ...w.content, layouts: next } }));
+      }
+    });
+    try {
+      await Promise.all(jobs);
+    } catch (e) {
+      setError(e.message);
+    }
+    await reload();
+  }, [api, deviceId, deviceName, reload]);
 
   const addWidget = useCallback(
     async (widget) => {
@@ -142,5 +213,9 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800 } = {}) {
     [api]
   );
 
-  return { widgets, status, error, updateWidget, addWidget, removeWidget };
+  return {
+    widgets, status, error,
+    updateWidget, addWidget, removeWidget,
+    listDeviceLayouts, clearDeviceLayout, copyDeviceLayout,
+  };
 }

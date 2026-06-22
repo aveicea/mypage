@@ -7,6 +7,7 @@
 
 const STORAGE_KEY = 'widget-board:config';
 const DEVICE_KEY = 'widget-board:device';
+const DEVICE_NAME_KEY = 'widget-board:device-name';
 
 /**
  * 이 기기(브라우저)의 안정적인 식별자. 위젯 데이터가 아니라 "어느 기기인지"만 저장한다.
@@ -19,6 +20,32 @@ export function getDeviceId() {
     localStorage.setItem(DEVICE_KEY, id);
   }
   return id;
+}
+
+/** 기기 종류를 대략 추측한 사람이 읽기 쉬운 이름 (목록 표시용) */
+export function guessDeviceName() {
+  const ua = navigator.userAgent || '';
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'iPad';
+  if (/iPhone/.test(ua)) return 'iPhone';
+  if (/Android/.test(ua)) return /Mobile/.test(ua) ? 'Android 폰' : 'Android 태블릿';
+  if (/Macintosh/.test(ua)) return 'Mac';
+  if (/Windows/.test(ua)) return 'Windows';
+  if (/Linux/.test(ua)) return 'Linux';
+  return '기기';
+}
+
+/** 이 기기의 표시 이름 (없으면 추측값으로 초기화) */
+export function getDeviceName() {
+  let n = localStorage.getItem(DEVICE_NAME_KEY);
+  if (!n) {
+    n = guessDeviceName();
+    try { localStorage.setItem(DEVICE_NAME_KEY, n); } catch { /* ignore */ }
+  }
+  return n;
+}
+
+export function setDeviceName(name) {
+  try { localStorage.setItem(DEVICE_NAME_KEY, name); } catch { /* ignore */ }
 }
 
 function toBase64Url(str) {

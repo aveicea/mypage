@@ -370,6 +370,65 @@ button {
   gap: 4px;
 }
 
+/* 기기/위치 관리 */
+.device-toggle {
+  position: fixed;
+  left: 16px;
+  bottom: 100px;
+  z-index: 1000;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.device-panel {
+  position: fixed;
+  left: 16px;
+  bottom: 142px;
+  z-index: 1001;
+  width: 240px;
+  max-height: 60vh;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dev-name {
+  margin: 8px 10px 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.dev-btn {
+  margin: 0 10px 10px;
+  padding: 7px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f5f6f8;
+  color: var(--text);
+  cursor: pointer;
+}
+.dev-btn:hover { background: #e7eaef; }
+.dev-danger { color: #c0392b; border-color: #f0c4bd; background: #fdf1ef; }
+.dev-danger:hover { background: #fbe3df; }
+.dev-list { overflow: auto; padding-bottom: 6px; }
+.dev-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 13px;
+}
+.dev-rname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dev-id { color: #9aa0a8; font-size: 11px; }
+.dev-count { color: var(--muted); font-size: 11px; margin-left: 4px; }
+.dev-row .dev-btn { margin: 0; padding: 4px 8px; }
+
 .top-right {
   position: fixed;
   top: 16px;
