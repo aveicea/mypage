@@ -48,10 +48,20 @@ export default function Canvas({
         return;
       }
 
-      // 모든 위젯 body 위에서는 캔버스 패닝 차단 (가로/세로 모두)
-      const body = e.target.closest?.('.widget-body');
-      if (body) {
-        e.preventDefault();
+      // 임베드: iframe 이 아직 비활성(hover 1초 전)일 때만 이 핸들러에 도달한다.
+      // (1초 지나면 iframe pointer-events:auto 라 휠이 iframe 으로 직접 가서 여기 안 옴)
+      // → 1초 전에는 보드를 이동시킨다.
+      if (e.target.closest?.('.widget--embed')) {
+        if (panEnabled) {
+          e.preventDefault();
+          panBy(-e.deltaX, -e.deltaY);
+        }
+        return;
+      }
+
+      // 그 외 위젯 body 위에서는: 위젯 내부 스크롤만 허용(preventDefault 안 함),
+      // 보드는 이동시키지 않는다(panBy 안 함). 내용이 짧아 스크롤할 게 없으면 그냥 멈춤.
+      if (e.target.closest?.('.widget-body')) {
         return;
       }
 
