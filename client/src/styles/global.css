@@ -883,7 +883,7 @@ button {
 .draw-bar {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
 }
 /* 보기 모드 그리기 세션: 위젯 안 상단에 떠 있는 도구 */

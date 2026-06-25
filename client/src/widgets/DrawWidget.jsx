@@ -161,7 +161,7 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
         )}
         <button className={`draw-w ${tool === 'pen' ? 'on' : ''}`} title="펜" onClick={() => pick('pen')}>✏️</button>
         <button className={`draw-w ${tool === 'hl' ? 'on' : ''}`} title="형광펜" onClick={() => pick('hl')}>🖍</button>
-        <button className={`draw-w ${tool === 'eraser' ? 'on' : ''}`} title="지우개" onClick={() => pick('eraser')}>⌫</button>
+        <button className={`draw-w ${tool === 'eraser' ? 'on' : ''}`} title="지우개" onClick={() => pick('eraser')}>🧹</button>
         <button className="draw-w" title="뒤로가기" onClick={undo}>↺</button>
         <button className="draw-w" title="전체 지우기" onClick={clear}>🗑</button>
         {drawing && !inEdit && (
