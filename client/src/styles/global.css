@@ -688,12 +688,21 @@ button {
 }
 .ed-input {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   background: transparent;
   font: inherit;
   color: inherit;
   padding: 1px 0;
+  /* textarea: 긴 줄 자동 줄바꿈 + 높이 자동 (스크립트가 조절) */
+  display: block;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: inherit;
 }
 
 /* 처음 보일 영역 가이드 */
