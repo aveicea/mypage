@@ -58,6 +58,14 @@ export function createApi(config) {
         body: JSON.stringify(payload),
       }).then(handle),
 
+    // 어떤 파일이든 동일 엔드포인트(Files 속성 업로드)로 처리
+    uploadFile: (id, payload) =>
+      fetch(`/api/widgets/${id}/image`, {
+        method: 'POST',
+        headers: headers(config),
+        body: JSON.stringify(payload),
+      }).then(handle),
+
     og: (url) =>
       fetch(`/api/meta/og?url=${encodeURIComponent(url)}`, { headers: headers(config) }).then(handle),
   };

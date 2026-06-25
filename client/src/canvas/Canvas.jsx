@@ -220,7 +220,7 @@ export default function Canvas({
 
   const types = [
     ['text', '텍스트/메모'],
-    ['image', '이미지'],
+    ['media', '파일/미디어'],
     ['link', '링크 카드'],
     ['embed', '임베드'],
     ['draw', '그림'],
