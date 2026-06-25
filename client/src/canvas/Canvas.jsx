@@ -60,18 +60,13 @@ export default function Canvas({
         return;
       }
 
-      // 위젯 본문 위:
-      // - 세로 스크롤은 위젯 안에서만 (보드 이동 X)
-      // - 가로는 위젯이 가로 스크롤 가능하면 위젯에 맡기고,
-      //   아니면 보드를 가로로 이동(뒤로가기 방지 겸).
+      // 위젯 본문 위: 보드는 절대 움직이지 않는다(세로·가로 모두).
+      // 스크롤은 위젯 안에서만. 가로로 스크롤할 게 없으면 뒤로가기만 차단.
       const body = e.target.closest?.('.widget-body');
       if (body) {
         if (horizontal) {
           const canScrollX = body.scrollWidth > body.clientWidth + 1;
-          if (!canScrollX) {
-            e.preventDefault();
-            if (panEnabled) panBy(-e.deltaX, 0); // 위젯이 못 하면 보드를 가로 이동
-          }
+          if (!canScrollX) e.preventDefault(); // 보드는 안 움직임, 뒤로가기만 방지
         }
         return;
       }
