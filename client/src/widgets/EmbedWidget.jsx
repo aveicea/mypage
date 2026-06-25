@@ -53,7 +53,12 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
   }
 
   const tools = (
-    <div className="embed-tools" onPointerDown={(e) => e.stopPropagation()}>
+    <div
+      className="embed-tools"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+    >
       <button onClick={() => setZoom(zoom - 0.1)}>−</button>
       <span
         title="더블클릭하여 직접 입력"

@@ -8,7 +8,7 @@ import { useWidgetSync } from '../hooks/useWidgetSync.js';
 import Canvas from '../canvas/Canvas.jsx';
 import WidgetFrame from '../widgets/WidgetFrame.jsx';
 import TextWidget from '../widgets/TextWidget.jsx';
-import ImageWidget from '../widgets/ImageWidget.jsx';
+import MediaWidget from '../widgets/MediaWidget.jsx';
 import LinkWidget from '../widgets/LinkWidget.jsx';
 import EmbedWidget from '../widgets/EmbedWidget.jsx';
 import DrawWidget from '../widgets/DrawWidget.jsx';
@@ -20,7 +20,7 @@ import {
 } from '../widgets/icons.jsx';
 
 const TYPE_LABEL = {
-  text: '텍스트', postit: '포스트잇', image: '이미지', link: '링크',
+  text: '텍스트', postit: '포스트잇', image: '미디어', media: '미디어', link: '링크',
   embed: '임베드', draw: '그림', viewbtn: '뷰 버튼',
 };
 function widgetLabel(w) {
@@ -33,6 +33,7 @@ const DEFAULTS = {
   text: { width: 220, height: 120, content: { text: '' } },
   postit: { width: 200, height: 200, content: { text: '' } },
   image: { width: 280, height: 200, content: { src: '' } },
+  media: { width: 300, height: 220, content: {} },
   link: { width: 280, height: 220, content: { url: '' } },
   embed: { width: 360, height: 240, content: { url: '' } },
   draw: { width: 300, height: 220, content: { strokes: [] } },
@@ -42,7 +43,7 @@ const DEFAULTS = {
 const ADD_TYPES = [
   ['text', '텍스트'],
   ['postit', '포스트잇'],
-  ['image', '이미지'],
+  ['media', '파일/미디어'],
   ['link', '링크 카드'],
   ['embed', '임베드'],
   ['draw', '그림'],
@@ -361,7 +362,8 @@ export default function Board() {
       onChange: (patch, opts) => updateWidget(w.id, patch, opts),
     };
     switch (w.type) {
-      case 'image': return <ImageWidget {...common} />;
+      case 'image':
+      case 'media': return <MediaWidget {...common} />;
       case 'link': return <LinkWidget {...common} />;
       case 'embed': return <EmbedWidget {...common} />;
       case 'draw': return <DrawWidget {...common} />;
