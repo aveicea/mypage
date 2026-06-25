@@ -65,7 +65,7 @@ export default function Board() {
   const viewport = useViewport();
   const {
     widgets, status, error, updateWidget, addWidget, removeWidget,
-    listDeviceLayouts, clearDeviceLayout, copyDeviceLayout,
+    listDeviceLayouts, clearDeviceLayout, copyDeviceLayout, deleteDeviceLayout,
   } = useWidgetSync(api, deviceId, { deviceName });
 
   const [editMode, setEditMode] = useState(false); // ✏️ 항상 보기 모드로 시작
@@ -557,6 +557,17 @@ export default function Board() {
                   }}
                 >
                   덮어쓰기
+                </button>
+                <button
+                  className="dev-btn dev-danger"
+                  title="이 기기 위치 정보 삭제"
+                  onClick={async () => {
+                    if (window.confirm(`'${d.name || d.id.slice(-4)}'의 위치 정보를 삭제할까요?`)) {
+                      await deleteDeviceLayout(d.id);
+                    }
+                  }}
+                >
+                  삭제
                 </button>
               </div>
             ))}
