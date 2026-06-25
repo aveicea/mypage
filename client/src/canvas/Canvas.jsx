@@ -58,7 +58,7 @@ export default function Canvas({
         }
         const elapsed = Date.now() - embedHoverRef.current.at;
         if (elapsed < 3000) {
-          if (panEnabled) { e.preventDefault(); panBy(-e.deltaX, -e.deltaY); }
+          e.preventDefault();
           return;
         }
         return;
