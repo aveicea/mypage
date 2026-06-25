@@ -941,6 +941,22 @@ button {
   cursor: pointer;
 }
 .draw-swatch.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.draw-custom {
+  position: relative;
+  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+  display: inline-block;
+  overflow: hidden;
+}
+.draw-custom input[type='color'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
 .draw-w {
   border: none;
   background: transparent;
