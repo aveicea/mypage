@@ -206,6 +206,15 @@ button {
 .wt-move { cursor: move; }
 .wt-del:hover { color: var(--danger); }
 
+/* 배경색 스와치 묶음: 삭제 버튼과 간격을 두고 오른쪽으로 */
+.wt-swatches {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-left: 14px;
+}
+
 .wt-swatch {
   width: 18px;
   height: 18px;
