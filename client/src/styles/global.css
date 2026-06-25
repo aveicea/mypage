@@ -143,6 +143,8 @@ button {
 .widget-resize {
   position: absolute;
   z-index: 2;
+  /* 터치로 핸들을 끌 때 브라우저가 페이지를 스크롤/이동시키지 않도록 */
+  touch-action: none;
 }
 
 /* 코너 핸들 (작은 사각형) */
@@ -198,6 +200,7 @@ button {
   box-shadow: var(--shadow);
   color: #333;
   padding: 0;
+  touch-action: none;
 }
 .wt-btn svg { width: 15px; height: 15px; }
 .wt-move { cursor: move; }
@@ -710,6 +713,7 @@ button {
   cursor: move;
   white-space: nowrap;
   user-select: none;
+  touch-action: none;
 }
 .home-handle {
   position: absolute;
@@ -719,6 +723,7 @@ button {
   border: 2px solid rgba(0, 0, 0, 0.5);
   border-radius: 3px;
   pointer-events: auto;
+  touch-action: none;
 }
 .h-nw { top: -7px; left: -7px; cursor: nwse-resize; }
 .h-se { bottom: -7px; right: -7px; cursor: nwse-resize; }
