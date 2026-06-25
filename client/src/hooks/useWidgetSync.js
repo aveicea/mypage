@@ -147,13 +147,15 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800, deviceName = ''
   }, []);
 
   // 이 기기의 위치 정보 전부 삭제 → 위젯이 공통(기본) 위치/크기로 복귀
-  const clearDeviceLayout = useCallback(async () => {
+  // 특정 기기(id)의 위치 정보를 모든 위젯에서 삭제
+  const deleteDeviceLayout = useCallback(async (id) => {
+    if (!id) return;
     const jobs = [];
     widgetsRef.current.forEach((w) => {
       const L = w.content?.layouts;
-      if (L && L[deviceId]) {
+      if (L && L[id]) {
         const next = { ...L };
-        delete next[deviceId];
+        delete next[id];
         jobs.push(api.update(w.id, { content: { ...w.content, layouts: next } }));
       }
     });
@@ -163,7 +165,10 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800, deviceName = ''
       setError(e.message);
     }
     await reload();
-  }, [api, deviceId, reload]);
+  }, [api, reload]);
+
+  // 이 기기의 위치 정보 전부 삭제
+  const clearDeviceLayout = useCallback(() => deleteDeviceLayout(deviceId), [deleteDeviceLayout, deviceId]);
 
   // 다른 기기의 위치 정보를 이 기기로 덮어쓰기
   const copyDeviceLayout = useCallback(async (srcId) => {
@@ -216,6 +221,6 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800, deviceName = ''
   return {
     widgets, status, error,
     updateWidget, addWidget, removeWidget,
-    listDeviceLayouts, clearDeviceLayout, copyDeviceLayout,
+    listDeviceLayouts, clearDeviceLayout, copyDeviceLayout, deleteDeviceLayout,
   };
 }
