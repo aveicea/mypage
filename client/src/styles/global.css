@@ -129,6 +129,8 @@ button {
   overflow: auto;
   /* 둥근 모서리 안쪽으로 콘텐츠 클리핑 */
   border-radius: 9px;
+  /* 스크롤이 캔버스로 전파되지 않도록 */
+  overscroll-behavior: none;
   /* 스크롤바: 배경 없이 회색만 */
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.28) transparent;
