@@ -1,4 +1,4 @@
-import { createContext, useCallback, useRef, useState } from 'react';
+import { createContext, useCallback, useEffect, useRef, useState } from 'react';
 import { MoveIcon, TrashIcon } from './icons.jsx';
 
 // 위젯별 편집 도구를 테두리 바깥(외부 툴바)에 포털로 띄우기 위한 컨텍스트
@@ -94,7 +94,13 @@ export default function WidgetFrame({
   const drag = useRef(null);
   const [extHost, setExtHost] = useState(null);
   const hostRef = useCallback((node) => setExtHost(node), []);
+  const [paletteOpen, setPaletteOpen] = useState(false); // 색상 팔레트 펼침 여부
   const act = interactive ?? editMode; // 편집 모드이거나, 이 위젯만 임시 편집 활성
+
+  // 선택 해제되면 팔레트 접기
+  useEffect(() => {
+    if (!selected) setPaletteOpen(false);
+  }, [selected]);
 
   function onPointerDown(e) {
     if (!act) return;
@@ -250,47 +256,31 @@ export default function WidgetFrame({
               <TrashIcon />
             </button>
 
-            {isPostit &&
-              POSTIT_COLORS.map((c) => (
+            {(isPostit || isDraw) && (() => {
+              // 포스트잇은 color, 그림판은 bg 키 사용
+              const key = isPostit ? 'color' : 'bg';
+              const colors = isPostit ? POSTIT_COLORS : [...DRAW_BG, 'transparent'];
+              const cur = widget.content?.[key] ?? colors[0];
+              const swatch = (c, extra = '') => (
                 <button
                   key={c}
-                  className={`wt-swatch${c === 'transparent' ? ' wt-transparent' : ''}`}
+                  className={`wt-swatch${c === 'transparent' ? ' wt-transparent' : ''}${extra}`}
                   title={c === 'transparent' ? '투명' : '색상'}
                   style={c !== 'transparent' ? { background: c } : {}}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onChange({ content: { ...widget.content, color: c } }, { commit: true });
+                    if (!paletteOpen) { setPaletteOpen(true); return; }
+                    onChange({ content: { ...widget.content, [key]: c } }, { commit: true });
+                    setPaletteOpen(false);
                   }}
                 />
-              ))}
-
-            {isDraw && (
-              <>
-                {DRAW_BG.map((c) => (
-                  <button
-                    key={c}
-                    className="wt-swatch"
-                    title="배경색"
-                    style={{ background: c }}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onChange({ content: { ...widget.content, bg: c } }, { commit: true });
-                    }}
-                  />
-                ))}
-                <button
-                  className="wt-swatch wt-transparent"
-                  title="투명 배경"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChange({ content: { ...widget.content, bg: 'transparent' } }, { commit: true });
-                  }}
-                />
-              </>
-            )}
+              );
+              // 접힘: 현재 색 하나만. 펼침: 전체 색.
+              return paletteOpen
+                ? colors.map((c) => swatch(c, c === cur ? ' wt-cur' : ''))
+                : swatch(cur, ' wt-cur');
+            })()}
 
           </div>
         )}
