@@ -1,4 +1,4 @@
-import { useContext, useRef, useState } from 'react';
+import { useContext, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { WidgetChromeContext } from './WidgetFrame.jsx';
 
@@ -73,7 +73,9 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
     if (tool === 'eraser') {
       if (eraseRef.current) eraseAt(pt(e));
     } else if (cur) {
-      setCur((c) => ({ ...c, points: [...c.points, pt(e)] }));
+      // 트랙패드/펜이 한 프레임에 여러 점을 합쳐 보낼 수 있으므로 모두 수집 → 더 매끄럽게
+      const evs = e.nativeEvent.getCoalescedEvents?.() || [e];
+      setCur((c) => ({ ...c, points: [...c.points, ...evs.map(pt)] }));
     }
   }
   function onUp(e) {
@@ -117,6 +119,9 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
     }
     return <g key={i}>{segs}</g>;
   }
+
+  // 이미 그려진 획들은 메모이즈 → 그리는 중(cur 갱신)에는 다시 렌더링하지 않아 끊김 방지
+  const committed = useMemo(() => strokes.map(renderStroke), [strokes]);
 
   const background = bg === 'transparent' ? 'transparent' : hexToRgba(bg, bgOpacity);
   const popupColors = PEN_COLORS;
@@ -201,7 +206,8 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
         onPointerMove={onMove}
         onPointerUp={onUp}
       >
-        {[...strokes, ...(cur ? [cur] : [])].map(renderStroke)}
+        {committed}
+        {cur && renderStroke(cur, 'cur')}
       </svg>
     </div>
   );
