@@ -28,6 +28,7 @@ export default function Canvas({
   const pointers = useRef(new Map()); // pointerId -> {x,y} (핀치용)
   const pinch = useRef(null); // { dist, cx, cy }
   const marquee = useRef(null); // 편집 모드 드래그 박스 선택
+  const wheelGesture = useRef({ start: 0, last: 0, body: null }); // 위젯 스크롤 1초 지연용
   const [marqueeRect, setMarqueeRect] = useState(null); // 화면 좌표 오버레이
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
@@ -55,17 +56,43 @@ export default function Canvas({
       // (1초 지나면 iframe pointer-events:auto 라 휠이 iframe 으로 직접 가서 여기 안 옴)
       // → 1초 전에는 보드를 이동시킨다. (페이지 스크롤/뒤로가기 방지 위해 항상 preventDefault)
       if (e.target.closest?.('.widget--embed')) {
+        wheelGesture.current.body = null; // 임베드/배경으로 나가면 위젯 타이머 리셋
         e.preventDefault();
         if (panEnabled) panBy(-e.deltaX, -e.deltaY);
         return;
       }
 
-      // 스크롤 가능한 위젯 본문 위: 세로 스크롤은 위젯 내부에 맡기되,
-      // 가로 스와이프는 뒤로가기로 새지 않게 차단한다.
-      if (e.target.closest?.('.widget-body')) {
-        if (horizontal) e.preventDefault();
+      // 위젯 본문 위: 위젯이 많으면 보드 스크롤이 어려우니 1초 지연을 둔다.
+      // 그 위젯에 처음 들어와 1초간은 보드가 이동하고, 같은 위젯 위에서 1초 넘게
+      // 계속 굴리면 그때부터 위젯 내부가 스크롤된다. 한 번 위젯 스크롤로 들어가면
+      // 멈췄다 다시 굴려도 계속 위젯 안에서만(커서를 다른 위젯/배경으로 옮겨야 리셋).
+      const body = e.target.closest?.('.widget-body');
+      if (body) {
+        if (panEnabled) {
+          const now = performance.now();
+          const g = wheelGesture.current;
+          if (g.body !== body) {
+            // 다른 위젯으로 옮겨옴 → 새로 1초 타이머 시작
+            g.start = now;
+            g.body = body;
+          }
+          if (now - g.start < 1000) {
+            // 처음 1초: 보드 이동
+            e.preventDefault();
+            panBy(-e.deltaX, -e.deltaY);
+            return;
+          }
+        }
+        // 1초 후(또는 잠금 보기): 위젯 내부 스크롤. 가로 스크롤할 게 없으면 뒤로가기만 차단.
+        if (horizontal) {
+          const canScrollX = body.scrollWidth > body.clientWidth + 1;
+          if (!canScrollX) e.preventDefault();
+        }
         return;
       }
+
+      // 여기부터는 위젯 밖(배경) → 위젯 스크롤 타이머 리셋
+      wheelGesture.current.body = null;
 
       // 가로 스와이프 = 뒤로가기 방지 (보드만 좌우 이동)
       if (horizontal) {
