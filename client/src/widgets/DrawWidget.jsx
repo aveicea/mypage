@@ -148,7 +148,12 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
             <button key={c} className={`draw-swatch ${popupColor === c ? 'on' : ''}`} style={{ background: c }} onClick={() => setPopupColor(c)} />
           ))}
           {/* 직접 색 지정 */}
-          <label className={`draw-swatch draw-custom ${!popupColors.includes(popupColor) ? 'on' : ''}`} title="직접 색 지정" style={{ background: !popupColors.includes(popupColor) ? popupColor : undefined }}>
+          <label
+            className={`draw-swatch draw-custom ${!popupColors.includes(popupColor) ? 'on' : ''}`}
+            title="직접 색 지정"
+            style={!popupColors.includes(popupColor) ? { background: popupColor } : undefined}
+          >
+            {popupColors.includes(popupColor) && <span className="draw-custom-plus">+</span>}
             <input
               type="color"
               value={popupColor}
