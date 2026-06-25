@@ -66,9 +66,10 @@ export default function Canvas({
         embedHoverRef.current = { el: null, at: 0 };
       }
 
-      // 모든 위젯 body 위에서는 캔버스 패닝 차단 (위젯 내부 스크롤만 허용)
+      // 모든 위젯 body 위에서는 캔버스 패닝 차단 (가로/세로 모두)
       const body = e.target.closest?.('.widget-body');
       if (body) {
+        e.preventDefault();
         return;
       }
 
