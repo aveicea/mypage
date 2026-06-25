@@ -60,15 +60,20 @@ export default function Canvas({
         return;
       }
 
-      // 위젯 본문 위: 위젯이 그 방향으로 스크롤할 수 있으면 위젯에 맡긴다.
-      // 가로로 스크롤할 게 없을 때만 가로 스와이프를 차단(브라우저 뒤로가기 방지).
+      // 위젯 본문 위:
+      // - 세로 스크롤은 위젯 안에서만 (보드 이동 X)
+      // - 가로는 위젯이 가로 스크롤 가능하면 위젯에 맡기고,
+      //   아니면 보드를 가로로 이동(뒤로가기 방지 겸).
       const body = e.target.closest?.('.widget-body');
       if (body) {
         if (horizontal) {
           const canScrollX = body.scrollWidth > body.clientWidth + 1;
-          if (!canScrollX) e.preventDefault(); // 가로 스크롤 불가 → 뒤로가기 방지
+          if (!canScrollX) {
+            e.preventDefault();
+            if (panEnabled) panBy(-e.deltaX, 0); // 위젯이 못 하면 보드를 가로 이동
+          }
         }
-        return; // 세로/가로 스크롤은 위젯 내부가 처리
+        return;
       }
 
       // 가로 스와이프 = 뒤로가기 방지 (보드만 좌우 이동)
