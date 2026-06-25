@@ -50,17 +50,6 @@ export default function Canvas({
         return;
       }
 
-      // 포스트잇: 실제 내용 영역(widget-body) 위에서는 캔버스 이동 차단 (이벤트 흡수)
-      const postitBody = e.target.closest?.('.widget--postit .widget-body');
-      if (postitBody) {
-        const atTop = postitBody.scrollTop <= 0;
-        const atBottom = postitBody.scrollTop + postitBody.clientHeight >= postitBody.scrollHeight - 1;
-        const canScroll = (e.deltaY > 0 && !atBottom) || (e.deltaY < 0 && !atTop);
-        if (canScroll) return;
-        e.preventDefault();
-        return;
-      }
-
       // 임베드: 위젯 위에서 3초 이상 머물면 iframe 내부 스크롤 허용
       const embedWidget = e.target.closest?.('.widget--embed');
       if (embedWidget) {
@@ -72,26 +61,14 @@ export default function Canvas({
           if (panEnabled) { e.preventDefault(); panBy(-e.deltaX, -e.deltaY); }
           return;
         }
-        // 3초 이상 → iframe 내부 스크롤에 맡김
         return;
       } else {
         embedHoverRef.current = { el: null, at: 0 };
       }
 
-      const body = e.target.closest && e.target.closest('.widget-body');
-      const scrollable = body && body.scrollHeight - body.clientHeight > 1;
-
-      if (scrollable) {
-        // 스크롤 체이닝: 위젯이 그 방향으로 더 스크롤할 수 있으면 위젯이 스크롤,
-        // 끝에 닿으면 보드 이동
-        const atTop = body.scrollTop <= 0;
-        const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 1;
-        const canScroll = (e.deltaY > 0 && !atBottom) || (e.deltaY < 0 && !atTop);
-        if (canScroll) return; // 위젯이 스크롤
-        if (panEnabled) {
-          e.preventDefault();
-          panBy(-e.deltaX, -e.deltaY);
-        }
+      // 모든 위젯 body 위에서는 캔버스 패닝 차단 (위젯 내부 스크롤만 허용)
+      const body = e.target.closest?.('.widget-body');
+      if (body) {
         return;
       }
 
