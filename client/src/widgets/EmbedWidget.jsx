@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { WidgetChromeContext } from './WidgetFrame.jsx';
 
@@ -22,10 +22,14 @@ function toEmbedUrl(raw) {
 
 const clampZoom = (z) => Math.min(3, Math.max(0.25, Math.round(z * 100) / 100));
 
+const HOVER_DELAY = 1000; // 1초 후 iframe 스크롤 활성화
+
 export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
   const { host, selected, editMode: ctxEdit } = useContext(WidgetChromeContext);
   const content = widget.content || {};
   const url = content.url || '';
+  const [iframeActive, setIframeActive] = useState(false);
+  const hoverTimer = useRef(null);
   // 확대 배율은 기기별로 저장 (없으면 공통 zoom, 그래도 없으면 1)
   const zoom = content.zooms?.[deviceId] ?? content.zoom ?? 1;
 
@@ -78,13 +82,30 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
         }
       : { width: '100%', height: '100%' };
 
+  function onMouseEnter() {
+    if (editMode) return;
+    hoverTimer.current = setTimeout(() => setIframeActive(true), HOVER_DELAY);
+  }
+  function onMouseLeave() {
+    clearTimeout(hoverTimer.current);
+    setIframeActive(false);
+  }
+
   return (
-    <div className="w-embed" onDoubleClick={() => editMode && setUrl()}>
+    <div
+      className="w-embed"
+      onDoubleClick={() => editMode && setUrl()}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       {ctxEdit && selected && host && createPortal(tools, host)}
       <iframe
         src={toEmbedUrl(url)}
         title={widget.id}
-        style={iframeStyle}
+        style={{
+          ...iframeStyle,
+          pointerEvents: editMode ? 'none' : iframeActive ? 'auto' : 'none',
+        }}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
       />
