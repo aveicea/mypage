@@ -206,6 +206,15 @@ button {
 .wt-move { cursor: move; }
 .wt-del:hover { color: var(--danger); }
 
+/* 배경색 스와치 묶음: 삭제 버튼과 간격을 두고 오른쪽으로 */
+.wt-swatches {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-left: 14px;
+}
+
 .wt-swatch {
   width: 18px;
   height: 18px;
@@ -679,12 +688,21 @@ button {
 }
 .ed-input {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   background: transparent;
   font: inherit;
   color: inherit;
   padding: 1px 0;
+  /* textarea: 긴 줄 자동 줄바꿈 + 높이 자동 (스크립트가 조절) */
+  display: block;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: inherit;
 }
 
 /* 처음 보일 영역 가이드 */

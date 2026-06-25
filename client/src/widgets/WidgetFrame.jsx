@@ -277,9 +277,11 @@ export default function WidgetFrame({
                 />
               );
               // 접힘: 현재 색 하나만. 펼침: 전체 색.
-              return paletteOpen
+              const items = paletteOpen
                 ? colors.map((c) => swatch(c, c === cur ? ' wt-cur' : ''))
                 : swatch(cur, ' wt-cur');
+              // 삭제 버튼과 간격을 두고 오른쪽으로 분리
+              return <span className="wt-swatches">{items}</span>;
             })()}
 
           </div>

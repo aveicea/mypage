@@ -44,6 +44,17 @@ export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, o
   const pendingFocus = useRef(null);
   const lastFocus = useRef(0);
 
+  // 각 행 textarea 높이를 내용에 맞게 자동 조절 (긴 줄 자동 줄바꿈)
+  useEffect(() => {
+    if (!editing) return;
+    inputRefs.current.forEach((el) => {
+      if (el) {
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+      }
+    });
+  }, [rows, editing]);
+
   // pendingFocus 적용 (행 변경 후 커서 위치 복원)
   useEffect(() => {
     if (!editing || !pendingFocus.current) return;
@@ -239,8 +250,9 @@ export default function TextWidget({ widget, editMode, autoEdit, onAutoEdited, o
                 tabIndex={-1}
               />
             )}
-            <input
+            <textarea
               className="ed-input"
+              rows={1}
               value={r.text}
               ref={(el) => (inputRefs.current[i] = el)}
               onFocus={() => (lastFocus.current = i)}

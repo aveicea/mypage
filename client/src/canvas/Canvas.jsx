@@ -48,20 +48,29 @@ export default function Canvas({
         return;
       }
 
+      // 가로가 더 큰 제스처(트랙패드 좌우 스와이프) = 브라우저 뒤로/앞으로가기 → 항상 차단
+      const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+
       // 임베드: iframe 이 아직 비활성(hover 1초 전)일 때만 이 핸들러에 도달한다.
       // (1초 지나면 iframe pointer-events:auto 라 휠이 iframe 으로 직접 가서 여기 안 옴)
-      // → 1초 전에는 보드를 이동시킨다.
+      // → 1초 전에는 보드를 이동시킨다. (페이지 스크롤/뒤로가기 방지 위해 항상 preventDefault)
       if (e.target.closest?.('.widget--embed')) {
-        if (panEnabled) {
-          e.preventDefault();
-          panBy(-e.deltaX, -e.deltaY);
-        }
+        e.preventDefault();
+        if (panEnabled) panBy(-e.deltaX, -e.deltaY);
         return;
       }
 
-      // 그 외 위젯 body 위에서는: 위젯 내부 스크롤만 허용(preventDefault 안 함),
-      // 보드는 이동시키지 않는다(panBy 안 함). 내용이 짧아 스크롤할 게 없으면 그냥 멈춤.
+      // 스크롤 가능한 위젯 본문 위: 세로 스크롤은 위젯 내부에 맡기되,
+      // 가로 스와이프는 뒤로가기로 새지 않게 차단한다.
       if (e.target.closest?.('.widget-body')) {
+        if (horizontal) e.preventDefault();
+        return;
+      }
+
+      // 가로 스와이프 = 뒤로가기 방지 (보드만 좌우 이동)
+      if (horizontal) {
+        e.preventDefault();
+        if (panEnabled) panBy(-e.deltaX, 0);
         return;
       }
 
