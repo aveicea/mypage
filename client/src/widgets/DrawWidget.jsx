@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { WidgetChromeContext } from './WidgetFrame.jsx';
 
 const PEN_COLORS = ['#111827', '#e11d48', '#2563eb', '#16a34a', '#f59e0b', '#ffffff'];
-const PEN_WIDTHS = [2, 4, 8];
+const PEN_WIDTHS = [1, 2, 4];
 const HL_WIDTHS = [10, 16, 24];
 
 function hexToRgba(hex, a) {
@@ -29,7 +29,7 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
   const [popup, setPopup] = useState(null); // null | 'pen' | 'hl'
   const [drawing, setDrawing] = useState(false); // 보기 모드에서 더블클릭으로 켜는 그리기 세션
   const [penColor, setPenColor] = useState(PEN_COLORS[0]);
-  const [penWidth, setPenWidth] = useState(2);
+  const [penWidth, setPenWidth] = useState(1);
   const [hlColor, setHlColor] = useState('#f59e0b');
   const [hlWidth, setHlWidth] = useState(16);
 
@@ -176,6 +176,7 @@ export default function DrawWidget({ widget, editMode, onRequestEdit, onChange }
       className="w-draw"
       style={{ background }}
       onDoubleClick={() => { if (!inEdit) startSession(); }}
+      onPointerDown={(e) => { if (session && tool !== 'none') e.stopPropagation(); }}
     >
       {(inEdit || drawing) && host && createPortal(bar, host)}
       <svg

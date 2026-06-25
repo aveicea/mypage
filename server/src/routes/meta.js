@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { notionFetch } from '../notionClient.js';
 
 const router = Router();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -31,6 +32,42 @@ router.get('/og', wrap(async (req, res) => {
   } catch (e) {
     res.status(502).json({ error: '메타데이터 조회 실패', detail: String(e) });
   }
+}));
+
+/** POST /api/meta/create-db  — API 키만으로 새 위젯 보드 DB 생성 */
+router.post('/create-db', wrap(async (req, res) => {
+  const apiKey = (req.get('x-notion-key') || '').trim();
+  if (!apiKey) return res.status(400).json({ error: 'x-notion-key 헤더 필요' });
+
+  // 이 integration이 접근 가능한 페이지 하나 찾기
+  const search = await notionFetch(apiKey, '/search', {
+    method: 'POST',
+    body: { filter: { value: 'page', property: 'object' }, page_size: 1 },
+  });
+  const parentPage = search.results?.[0];
+  if (!parentPage) {
+    return res.status(422).json({ error: 'Integration이 접근 가능한 Notion 페이지가 없습니다. Notion에서 Integration을 페이지에 연결해 주세요.' });
+  }
+
+  const db = await notionFetch(apiKey, '/databases', {
+    method: 'POST',
+    body: {
+      parent: { type: 'page_id', page_id: parentPage.id },
+      title: [{ type: 'text', text: { content: '위젯 보드' } }],
+      properties: {
+        Name:    { title: {} },
+        type:    { rich_text: {} },
+        x:       { number: {} },
+        y:       { number: {} },
+        width:   { number: {} },
+        height:  { number: {} },
+        zIndex:  { number: {} },
+        content: { rich_text: {} },
+      },
+    },
+  });
+
+  res.json({ databaseId: db.id.replace(/-/g, '') });
 }));
 
 export default router;

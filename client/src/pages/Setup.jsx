@@ -2,25 +2,49 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { encodeConfig, saveConfig, loadStoredConfig, buildShareUrl } from '../config.js';
 
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+
 export default function Setup() {
   const navigate = useNavigate();
   const existing = loadStoredConfig();
   const [apiKey, setApiKey] = useState(existing?.apiKey || '');
   const [databaseId, setDatabaseId] = useState(existing?.databaseId || '');
   const [copied, setCopied] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
 
-  const valid = apiKey.trim() && databaseId.trim();
+  const canSave = apiKey.trim() && databaseId.trim();
+  const canCreate = apiKey.trim() && !databaseId.trim();
 
   function handleSave() {
-    if (!valid) return;
+    if (!canSave) return;
     const config = { apiKey: apiKey.trim(), databaseId: databaseId.trim() };
     saveConfig(config);
     const encoded = encodeConfig(config);
     navigate(`/?config=${encoded}`);
   }
 
+  async function handleCreateDb() {
+    if (!apiKey.trim()) return;
+    setCreating(true);
+    setCreateError('');
+    try {
+      const res = await fetch(`${API_BASE}/meta/create-db`, {
+        method: 'POST',
+        headers: { 'x-notion-key': apiKey.trim() },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '생성 실패');
+      setDatabaseId(data.databaseId);
+    } catch (e) {
+      setCreateError(e.message);
+    } finally {
+      setCreating(false);
+    }
+  }
+
   async function handleCopy() {
-    if (!valid) return;
+    if (!canSave) return;
     const config = { apiKey: apiKey.trim(), databaseId: databaseId.trim() };
     const url = buildShareUrl(config);
     try {
@@ -52,17 +76,30 @@ export default function Setup() {
           <label>Notion Database ID</label>
           <input
             type="text"
-            placeholder="32자리 ID (대시 포함/미포함 모두 가능)"
+            placeholder="32자리 ID — 없으면 아래 버튼으로 자동 생성"
             value={databaseId}
             onChange={(e) => setDatabaseId(e.target.value)}
           />
+          {canCreate && (
+            <button
+              className="btn"
+              style={{ marginTop: 8, width: '100%' }}
+              disabled={creating}
+              onClick={handleCreateDb}
+            >
+              {creating ? '생성 중…' : '새 Notion DB 자동 생성'}
+            </button>
+          )}
+          {createError && (
+            <p style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}>{createError}</p>
+          )}
         </div>
 
         <div className="setup-actions">
-          <button className="btn accent" disabled={!valid} onClick={handleSave}>
+          <button className="btn accent" disabled={!canSave} onClick={handleSave}>
             저장하고 시작하기
           </button>
-          <button className="btn" disabled={!valid} onClick={handleCopy}>
+          <button className="btn" disabled={!canSave} onClick={handleCopy}>
             {copied ? '복사됨!' : '현재 링크 복사'}
           </button>
         </div>

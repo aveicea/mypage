@@ -32,6 +32,8 @@ export default function Canvas({
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
 
+  const embedHoverRef = useRef({ el: null, at: 0 });
+
   // 휠 줌은 passive:false 가 필요하므로 직접 리스너 등록
   useEffect(() => {
     const el = rootRef.current;
@@ -46,6 +48,34 @@ export default function Canvas({
           zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
         }
         return;
+      }
+
+      // 포스트잇: 실제 내용 영역(widget-body) 위에서는 캔버스 이동 차단 (이벤트 흡수)
+      const postitBody = e.target.closest?.('.widget--postit .widget-body');
+      if (postitBody) {
+        const atTop = postitBody.scrollTop <= 0;
+        const atBottom = postitBody.scrollTop + postitBody.clientHeight >= postitBody.scrollHeight - 1;
+        const canScroll = (e.deltaY > 0 && !atBottom) || (e.deltaY < 0 && !atTop);
+        if (canScroll) return;
+        e.preventDefault();
+        return;
+      }
+
+      // 임베드: 위젯 위에서 3초 이상 머물면 iframe 내부 스크롤 허용
+      const embedWidget = e.target.closest?.('.widget--embed');
+      if (embedWidget) {
+        if (embedHoverRef.current.el !== embedWidget) {
+          embedHoverRef.current = { el: embedWidget, at: Date.now() };
+        }
+        const elapsed = Date.now() - embedHoverRef.current.at;
+        if (elapsed < 3000) {
+          if (panEnabled) { e.preventDefault(); panBy(-e.deltaX, -e.deltaY); }
+          return;
+        }
+        // 3초 이상 → iframe 내부 스크롤에 맡김
+        return;
+      } else {
+        embedHoverRef.current = { el: null, at: 0 };
       }
 
       const body = e.target.closest && e.target.closest('.widget-body');
