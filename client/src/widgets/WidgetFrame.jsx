@@ -4,7 +4,7 @@ import { MoveIcon, TrashIcon } from './icons.jsx';
 // 위젯별 편집 도구를 테두리 바깥(외부 툴바)에 포털로 띄우기 위한 컨텍스트
 export const WidgetChromeContext = createContext({ host: null, selected: false, editMode: false });
 
-export const POSTIT_COLORS = ['#fff7c2', '#ffd6e0', '#d6f5d6', '#cfe8ff', '#e7d9ff', '#ffe0c2', '#eceff1'];
+export const POSTIT_COLORS = ['#fff7c2', '#ffd6e0', '#d6f5d6', '#cfe8ff', '#e7d9ff', '#ffe0c2', '#eceff1', 'transparent'];
 export const DRAW_BG = ['#ffffff', '#fff7c2', '#d6f5d6', '#cfe8ff', '#111827'];
 
 /**
@@ -208,7 +208,7 @@ export default function WidgetFrame({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
     >
-      {isPostit && (
+      {isPostit && (widget.content?.color ?? POSTIT_COLORS[0]) !== 'transparent' && (
         <div
           className="postit-bg"
           style={{ background: widget.content?.color || POSTIT_COLORS[0] }}
@@ -220,7 +220,7 @@ export default function WidgetFrame({
         </WidgetChromeContext.Provider>
       </div>
 
-      {(isText || isPostit) && (
+      {isPostit && (
         <div
           className={`fold-btn ${collapsed ? 'on' : ''}`}
           title={collapsed ? '펼치기' : '접기'}
@@ -254,9 +254,9 @@ export default function WidgetFrame({
               POSTIT_COLORS.map((c) => (
                 <button
                   key={c}
-                  className="wt-swatch"
-                  title="색상"
-                  style={{ background: c }}
+                  className={`wt-swatch${c === 'transparent' ? ' wt-transparent' : ''}`}
+                  title={c === 'transparent' ? '투명' : '색상'}
+                  style={c !== 'transparent' ? { background: c } : {}}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
