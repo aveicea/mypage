@@ -212,6 +212,7 @@ button {
   cursor: pointer;
 }
 .wt-swatch:hover { transform: scale(1.15); }
+.wt-swatch.wt-cur { outline: 2px solid var(--accent); outline-offset: 1px; }
 .wt-transparent {
   background: linear-gradient(135deg, #fff 45%, #f00 45%, #f00 55%, #fff 55%) !important;
   background-size: 10px 10px !important;
