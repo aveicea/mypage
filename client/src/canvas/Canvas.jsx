@@ -32,8 +32,6 @@ export default function Canvas({
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
 
-  const embedHoverRef = useRef({ el: null, at: 0 });
-
   // 휠 줌은 passive:false 가 필요하므로 직접 리스너 등록
   useEffect(() => {
     const el = rootRef.current;
@@ -48,22 +46,6 @@ export default function Canvas({
           zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
         }
         return;
-      }
-
-      // 임베드: 위젯 위에서 3초 이상 머물면 iframe 내부 스크롤 허용
-      const embedWidget = e.target.closest?.('.widget--embed');
-      if (embedWidget) {
-        if (embedHoverRef.current.el !== embedWidget) {
-          embedHoverRef.current = { el: embedWidget, at: Date.now() };
-        }
-        const elapsed = Date.now() - embedHoverRef.current.at;
-        if (elapsed < 3000) {
-          e.preventDefault();
-          return;
-        }
-        return;
-      } else {
-        embedHoverRef.current = { el: null, at: 0 };
       }
 
       // 모든 위젯 body 위에서는 캔버스 패닝 차단 (가로/세로 모두)
