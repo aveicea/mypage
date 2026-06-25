@@ -28,6 +28,7 @@ export default function Canvas({
   const pointers = useRef(new Map()); // pointerId -> {x,y} (핀치용)
   const pinch = useRef(null); // { dist, cx, cy }
   const marquee = useRef(null); // 편집 모드 드래그 박스 선택
+  const wheelGesture = useRef({ start: 0, last: 0, body: null }); // 위젯 스크롤 1초 지연용
   const [marqueeRect, setMarqueeRect] = useState(null); // 화면 좌표 오버레이
   const [grabbing, setGrabbing] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, world }
@@ -60,13 +61,31 @@ export default function Canvas({
         return;
       }
 
-      // 위젯 본문 위: 보드는 절대 움직이지 않는다(세로·가로 모두).
-      // 스크롤은 위젯 안에서만. 가로로 스크롤할 게 없으면 뒤로가기만 차단.
+      // 위젯 본문 위: 위젯이 많으면 보드 스크롤이 어려우니 1초 지연을 둔다.
+      // 한 번의 스크롤 제스처에서 처음 1초는 보드가 이동하고,
+      // 같은 위젯 위에서 1초 넘게 계속 굴리면 그때부터 위젯 내부가 스크롤된다.
       const body = e.target.closest?.('.widget-body');
       if (body) {
+        if (panEnabled) {
+          const now = performance.now();
+          const g = wheelGesture.current;
+          // 스크롤이 잠시 멈췄거나(>0.4s) 다른 위젯으로 옮기면 새 제스처로 간주 → 타이머 리셋
+          if (now - g.last > 400 || g.body !== body) {
+            g.start = now;
+            g.body = body;
+          }
+          g.last = now;
+          if (now - g.start < 1000) {
+            // 처음 1초: 보드 이동
+            e.preventDefault();
+            panBy(-e.deltaX, -e.deltaY);
+            return;
+          }
+        }
+        // 1초 후(또는 잠금 보기): 위젯 내부 스크롤. 가로 스크롤할 게 없으면 뒤로가기만 차단.
         if (horizontal) {
           const canScrollX = body.scrollWidth > body.clientWidth + 1;
-          if (!canScrollX) e.preventDefault(); // 보드는 안 움직임, 뒤로가기만 방지
+          if (!canScrollX) e.preventDefault();
         }
         return;
       }
