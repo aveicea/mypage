@@ -943,9 +943,18 @@ button {
 .draw-swatch.on { outline: 2px solid var(--accent); outline-offset: 1px; }
 .draw-custom {
   position: relative;
-  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
-  display: inline-block;
+  background: #fff;
+  border: 1px dashed #b0b4ba;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
+}
+.draw-custom-plus {
+  font-size: 13px;
+  line-height: 1;
+  color: #888;
+  pointer-events: none;
 }
 .draw-custom input[type='color'] {
   position: absolute;
