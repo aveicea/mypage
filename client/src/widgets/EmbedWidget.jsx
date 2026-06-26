@@ -22,7 +22,7 @@ function toEmbedUrl(raw) {
 
 const clampZoom = (z) => Math.min(3, Math.max(0.25, Math.round(z * 100) / 100));
 
-const HOVER_DELAY = 1000; // 1초 후 iframe 스크롤 활성화
+const HOVER_DELAY = 400; // 이 시간 후 iframe 스크롤 활성화
 
 export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
   const { host, selected, editMode: ctxEdit } = useContext(WidgetChromeContext);

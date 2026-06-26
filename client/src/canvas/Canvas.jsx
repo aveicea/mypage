@@ -62,8 +62,8 @@ export default function Canvas({
         return;
       }
 
-      // 위젯 본문 위: 위젯이 많으면 보드 스크롤이 어려우니 1초 지연을 둔다.
-      // 그 위젯에 처음 들어와 1초간은 보드가 이동하고, 같은 위젯 위에서 1초 넘게
+      // 위젯 본문 위: 위젯이 많으면 보드 스크롤이 어려우니 짧은 지연을 둔다.
+      // 그 위젯에 처음 들어와 0.4초간은 보드가 이동하고, 같은 위젯 위에서 그 뒤로
       // 계속 굴리면 그때부터 위젯 내부가 스크롤된다. 한 번 위젯 스크롤로 들어가면
       // 멈췄다 다시 굴려도 계속 위젯 안에서만(커서를 다른 위젯/배경으로 옮겨야 리셋).
       const body = e.target.closest?.('.widget-body');
@@ -72,12 +72,12 @@ export default function Canvas({
           const now = performance.now();
           const g = wheelGesture.current;
           if (g.body !== body) {
-            // 다른 위젯으로 옮겨옴 → 새로 1초 타이머 시작
+            // 다른 위젯으로 옮겨옴 → 새로 타이머 시작
             g.start = now;
             g.body = body;
           }
-          if (now - g.start < 1000) {
-            // 처음 1초: 보드 이동
+          if (now - g.start < 400) {
+            // 처음 0.4초: 보드 이동
             e.preventDefault();
             panBy(-e.deltaX, -e.deltaY);
             return;
