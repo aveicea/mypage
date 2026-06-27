@@ -1,4 +1,4 @@
-import { useContext, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { WidgetChromeContext } from './WidgetFrame.jsx';
 
@@ -30,6 +30,22 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
   const url = content.url || '';
   const [iframeActive, setIframeActive] = useState(false);
   const hoverTimer = useRef(null);
+  const containerRef = useRef(null);
+
+  // 트랙패드 핀치 줌 (ctrl+wheel) 을 브라우저 창 확대 대신 위젯 zoom 으로 처리
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      // deltaY > 0 → 축소, < 0 → 확대
+      const factor = 1 - e.deltaY * 0.01;
+      setZoom(zoom * factor);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  });
   // 확대 배율은 기기별로 저장 (없으면 공통 zoom, 그래도 없으면 1)
   const zoom = content.zooms?.[deviceId] ?? content.zoom ?? 1;
 
@@ -98,6 +114,7 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
 
   return (
     <div
+      ref={containerRef}
       className="w-embed"
       onDoubleClick={() => editMode && setUrl()}
       onMouseEnter={onMouseEnter}
