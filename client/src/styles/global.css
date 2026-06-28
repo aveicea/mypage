@@ -826,11 +826,32 @@ video.w-media-el { object-fit: contain; background: #000; }
 }
 .w-file:hover { text-decoration: underline; }
 .media-empty { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+
+/* PDF 뷰어 */
+.pdf-scroll {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  height: 100%;
+  touch-action: pan-y;
+}
+.pdf-scroll canvas { max-width: 100%; }
+.pdf-loading, .pdf-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 /* 편집 모드: 미디어가 포인터를 가로채지 않게 (이동/선택 우선, 더블클릭 교체는 래퍼가 받음) */
 .widget.edit .w-media > img,
 .widget.edit .w-media > video,
 .widget.edit .w-media > .w-audio,
 .widget.edit .w-media > iframe,
+.widget.edit .w-media > .pdf-scroll,
 .widget.edit .w-media > .w-file {
   pointer-events: none;
 }

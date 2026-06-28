@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
+import PdfViewer from './PdfViewer.jsx';
 
 // 서버리스(호스팅) 요청 본문 한계 때문에 직접 업로드는 약 4MB 까지만 안전.
 const MAX_DIRECT = 4 * 1024 * 1024;
@@ -70,6 +71,10 @@ export default function MediaWidget({ widget, editMode, api, onChange }) {
     reader.readAsDataURL(file);
   }
 
+  const onPdfPageChange = useCallback((page) => {
+    onChange({ content: { ...content, pdfPage: page } }, { commit: false });
+  }, [content, onChange]);
+
   const hiddenInput = <input ref={fileRef} type="file" hidden onChange={onFile} />;
 
   if (uploading) return <div className="w-placeholder">업로드 중…{hiddenInput}</div>;
@@ -106,7 +111,13 @@ export default function MediaWidget({ widget, editMode, api, onChange }) {
       </div>
     );
   } else if (kind === 'pdf') {
-    body = <iframe className="w-media-el" src={src} title={widget.id} />;
+    body = (
+      <PdfViewer
+        src={src}
+        savedPage={content.pdfPage || 1}
+        onPageChange={onPdfPageChange}
+      />
+    );
   } else {
     body = (
       <a className="w-file" href={src} target="_blank" rel="noreferrer" download>
