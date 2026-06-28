@@ -596,7 +596,7 @@ export default function Board() {
               <button
                 className="view-go"
                 title="첫 화면"
-                onClick={() => viewport.fitTo({ ...homeRect, y: homeRect.y - homeRect.height * 0.08 })}
+                onClick={() => viewport.fitTo(homeRect)}
               >
                 main
               </button>
