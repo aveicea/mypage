@@ -72,7 +72,7 @@ export default function MediaWidget({ widget, editMode, api, onChange }) {
   }
 
   const onPdfPageChange = useCallback((page) => {
-    onChange({ content: { ...content, pdfPage: page } }, { commit: false });
+    onChange({ content: { ...content, pdfPage: page } }, { commit: true });
   }, [content, onChange]);
 
   const hiddenInput = <input ref={fileRef} type="file" hidden onChange={onFile} />;
