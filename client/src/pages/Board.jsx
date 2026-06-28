@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { resolveConfig, getDeviceId, getDeviceName, setDeviceName, saveHomeRect, loadViews, saveViews } from '../config.js';
+import { resolveConfig, encodeConfig, getDeviceId, getDeviceName, setDeviceName, saveHomeRect, loadViews, saveViews } from '../config.js';
 import { createApi } from '../api.js';
 import { useViewport } from '../canvas/useViewport.js';
 import { useWidgetSync } from '../hooks/useWidgetSync.js';
@@ -58,6 +58,15 @@ export default function Board() {
     navigate('/setup', { replace: true });
     return null;
   }
+
+  // URL에 ?config= 없으면 추가 — 홈 화면 바로가기/북마크에 설정이 항상 포함되도록
+  useLayoutEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('config')) {
+      const encoded = encodeConfig(config);
+      window.history.replaceState(null, '', `/?config=${encoded}`);
+    }
+  }, []);
 
   const api = useMemo(() => createApi(config), [config]);
   const deviceId = useMemo(() => getDeviceId(), []);
