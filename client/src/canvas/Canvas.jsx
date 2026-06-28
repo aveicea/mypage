@@ -66,6 +66,14 @@ export default function Canvas({
       // 그 위젯에 처음 들어와 0.4초간은 보드가 이동하고, 같은 위젯 위에서 그 뒤로
       // 계속 굴리면 그때부터 위젯 내부가 스크롤된다. 한 번 위젯 스크롤로 들어가면
       // 멈췄다 다시 굴려도 계속 위젯 안에서만(커서를 다른 위젯/배경으로 옮겨야 리셋).
+      // PDF 뷰어 위: 스크롤이 본래 목적이므로 보드 패닝 지연 없이 바로 내부 스크롤.
+      // (가로 스크롤할 게 없을 때만 뒤로가기 방지)
+      if (e.target.closest?.('.pdf-scroll')) {
+        wheelGesture.current.body = null;
+        if (horizontal) e.preventDefault();
+        return;
+      }
+
       const body = e.target.closest?.('.widget-body');
       if (body) {
         if (panEnabled) {
