@@ -590,6 +590,18 @@ export default function Board() {
       {/* 상단 중앙: 저장된 뷰(북마크) */}
       {(editMode || (viewsBarVisible && views.length > 0)) && (
         <div className="views-bar">
+          {/* 보기 모드: 뷰가 하나라도 있으면 맨 앞에 첫 화면(main) 칩 */}
+          {!editMode && views.length > 0 && (
+            <span className="view-chip">
+              <button
+                className="view-go"
+                title="첫 화면"
+                onClick={() => viewport.fitTo({ ...homeRect, y: homeRect.y - homeRect.height * 0.08 })}
+              >
+                main
+              </button>
+            </span>
+          )}
           {views.map((v) => (
             <span key={v.id} className={`view-chip ${activeView === v.id ? 'active' : ''}`}>
               <button
