@@ -41,6 +41,11 @@ export function useViewport() {
     setZoom(1);
   }, []);
 
+  const setViewport = useCallback((z, p) => {
+    setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)));
+    setPan(p);
+  }, []);
+
   /** 주어진 월드 영역(rect)이 화면에 꽉 차게 pan/zoom 을 맞춘다 */
   const fitTo = useCallback((rect) => {
     if (!rect || !rect.width || !rect.height) {
@@ -58,5 +63,5 @@ export function useViewport() {
     });
   }, []);
 
-  return { pan, zoom, screenToWorld, zoomAt, panBy, reset, fitTo, MIN_ZOOM, MAX_ZOOM };
+  return { pan, zoom, screenToWorld, zoomAt, panBy, reset, fitTo, setViewport, MIN_ZOOM, MAX_ZOOM };
 }
