@@ -25,7 +25,7 @@ function useDebounced(fn, delay) {
 }
 
 export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
-  const debouncedPageChange = useDebounced(onPageChange || (() => {}), 1500);
+  const debouncedPageChange = useDebounced(onPageChange || (() => {}), 30000);
   const containerRef = useRef(null);
   const [pdf, setPdf] = useState(null);
   const [numPages, setNumPages] = useState(0);
