@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { resolveConfig, encodeConfig, getDeviceId, getDeviceName, setDeviceName, saveHomeRect, loadViews, saveViews, saveViewport, loadViewport } from '../config.js';
+import { resolveConfig, encodeConfig, getDeviceId, getDeviceName, setDeviceName, saveHomeRect, loadViews, saveViews } from '../config.js';
 import { createApi } from '../api.js';
 import { useViewport } from '../canvas/useViewport.js';
 import { useWidgetSync } from '../hooks/useWidgetSync.js';
@@ -239,25 +239,13 @@ export default function Board() {
     bumpHist();
   }
 
-  // 첫 로드 시 저장된 뷰포트 복원, 없으면 홈 영역으로 맞춤 (한 번만)
+  // 첫 로드/새로고침 시 항상 홈 영역(원점)으로 맞춤 (한 번만)
   const didFit = useRef(false);
   useEffect(() => {
     if (didFit.current) return;
     didFit.current = true;
-    const saved = loadViewport(config.databaseId, deviceId);
-    if (saved) {
-      viewport.setViewport(saved.zoom, saved.pan);
-    } else {
-      viewport.fitTo(homeRef.current);
-    }
-  }, [viewport, config.databaseId, deviceId]);
-
-  // 뷰포트(줌/패닝) 변경 시 기기별 저장 (초기 기본값은 저장 안 함)
-  const skipFirstVpSave = useRef(true);
-  useEffect(() => {
-    if (skipFirstVpSave.current) { skipFirstVpSave.current = false; return; }
-    saveViewport(config.databaseId, deviceId, { zoom: viewport.zoom, pan: viewport.pan });
-  }, [viewport.zoom, viewport.pan, config.databaseId, deviceId]);
+    viewport.fitTo(homeRef.current);
+  }, [viewport]);
 
   // 패닝: 편집 모드이거나 잠금 해제 보기. 확대: 편집 + 잠금 해제일 때만.
   const panEnabled = editMode || !locked;
