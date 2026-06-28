@@ -129,7 +129,10 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
     // 렌더 전이라 canvas 크기가 0일 수 있으므로 약간 대기
     const t = setTimeout(() => {
       const target = canvasRefs.current[page - 1];
-      if (target) target.scrollIntoView({ block: 'start', behavior: 'instant' });
+      const container = containerRef.current;
+      // scrollIntoView는 상위 컨테이너(보드 캔버스/창)까지 끌고 가므로
+      // PDF 스크롤 컨테이너 내부에서만 offsetTop으로 직접 이동
+      if (target && container) container.scrollTop = target.offsetTop;
     }, 300);
     return () => clearTimeout(t);
   }, [pdf, numPages, savedPage]);
