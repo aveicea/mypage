@@ -242,7 +242,8 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800, deviceName = ''
       if (src) {
         const next = {
           ...(w.content?.layouts || {}),
-          [deviceId]: { x: src.x, y: src.y, width: src.width, height: src.height, name: deviceName },
+          // 소스 기기 레이아웃 전체(위치·크기·확대 비율 등) 복사, 이름만 이 기기로
+          [deviceId]: { ...src, name: deviceName },
         };
         jobs.push(api.update(w.id, { content: { ...w.content, layouts: next } }));
       }
