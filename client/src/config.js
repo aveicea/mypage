@@ -151,6 +151,26 @@ export function saveViews(dbId, views) {
   }
 }
 
+/** 기기별 뷰포트(줌/패닝) 저장 및 복원 */
+export function saveViewport(dbId, deviceId, { zoom, pan }) {
+  try {
+    localStorage.setItem(
+      `widget-board:viewport:${dbId}:${deviceId}`,
+      JSON.stringify({ zoom, pan })
+    );
+  } catch { /* ignore */ }
+}
+
+export function loadViewport(dbId, deviceId) {
+  try {
+    const raw = localStorage.getItem(`widget-board:viewport:${dbId}:${deviceId}`);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    if (v && typeof v.zoom === 'number' && v.pan) return v;
+  } catch { /* ignore */ }
+  return null;
+}
+
 /** 인코딩된 config 를 포함한 전체 보드 URL 생성 */
 export function buildShareUrl(config) {
   const encoded = encodeConfig(config);

@@ -1,6 +1,61 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const GEOM = ['x', 'y', 'width', 'height'];
+const GAP = 16;
+
+/** 겹치지 않는 가장 가까운 빈 공간 탐색 */
+function findFreePosition(x, y, w, h, others) {
+  const overlaps = (px, py) => others.some(
+    (o) => px < o.x + o.width + GAP && px + w + GAP > o.x &&
+            py < o.y + o.height + GAP && py + h + GAP > o.y
+  );
+  if (!overlaps(x, y)) return { x, y };
+  for (let row = 0; row < 30; row++) {
+    for (let col = 0; col < 30; col++) {
+      if (row === 0 && col === 0) continue;
+      const nx = Math.round(x + col * (w + GAP));
+      const ny = Math.round(y + row * (h + GAP));
+      if (!overlaps(nx, ny)) return { x: nx, y: ny };
+    }
+  }
+  return { x: Math.round(x + w + GAP), y: Math.round(y + h + GAP) };
+}
+
+/**
+ * 이 기기에 레이아웃이 없는 위젯들에 빈 공간을 찾아 배치하고 Notion에 저장.
+ * rawWidgets를 직접 수정(content.layouts)하고 jobs를 채운다.
+ */
+function autoAssignLayouts(rawWidgets, deviceId, deviceName, api) {
+  const needsLayout = rawWidgets.filter((w) => !w.content?.layouts?.[deviceId]);
+  if (needsLayout.length === 0) return;
+
+  // 모든 위젯의 현재 기기 기준 위치 계산
+  const positioned = rawWidgets.map((w) => {
+    const ov = w.content?.layouts?.[deviceId];
+    return { id: w.id, x: ov?.x ?? w.x, y: ov?.y ?? w.y, width: ov?.width ?? w.width, height: ov?.height ?? w.height };
+  });
+
+  for (const w of needsLayout) {
+    const others = positioned.filter((p) => p.id !== w.id);
+    const pos = findFreePosition(w.x, w.y, w.width, w.height, others);
+
+    // positioned 업데이트 (이후 위젯 배치 시 반영)
+    const idx = positioned.findIndex((p) => p.id === w.id);
+    if (idx >= 0) { positioned[idx].x = pos.x; positioned[idx].y = pos.y; }
+
+    // 로컬 content 업데이트 (applyDeviceLayout이 이 값을 읽도록)
+    w.content = {
+      ...(w.content || {}),
+      layouts: {
+        ...(w.content?.layouts || {}),
+        [deviceId]: { x: pos.x, y: pos.y, width: w.width, height: w.height, name: deviceName },
+      },
+    };
+
+    // Notion에 저장 (fire-and-forget)
+    api.update(w.id, { content: w.content }).catch(() => {});
+  }
+}
 
 /** 이 기기 override 가 있으면 위치/크기를 그 값으로 치환 */
 function applyDeviceLayout(widget, deviceId) {
@@ -37,14 +92,16 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800, deviceName = ''
     return api
       .list()
       .then((data) => {
-        setWidgets((data.widgets || []).map((w) => applyDeviceLayout(w, deviceId)));
+        const raw = data.widgets || [];
+        autoAssignLayouts(raw, deviceId, deviceName, api);
+        setWidgets(raw.map((w) => applyDeviceLayout(w, deviceId)));
         setStatus('ready');
       })
       .catch((e) => {
         setError(e.message);
         setStatus('error');
       });
-  }, [api, deviceId]);
+  }, [api, deviceId, deviceName]);
 
   useEffect(() => {
     let alive = true;
@@ -53,7 +110,9 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800, deviceName = ''
       .list()
       .then((data) => {
         if (!alive) return;
-        setWidgets((data.widgets || []).map((w) => applyDeviceLayout(w, deviceId)));
+        const raw = data.widgets || [];
+        autoAssignLayouts(raw, deviceId, deviceName, api);
+        setWidgets(raw.map((w) => applyDeviceLayout(w, deviceId)));
         setStatus('ready');
       })
       .catch((e) => {
@@ -64,7 +123,7 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800, deviceName = ''
     return () => {
       alive = false;
     };
-  }, [api, deviceId]);
+  }, [api, deviceId, deviceName]);
 
   const flush = useCallback(
     (id) => {
