@@ -150,6 +150,10 @@ export function useWidgetSync(api, deviceId, { debounceMs = 800, deviceName = ''
   // 특정 기기(id)의 위치 정보를 모든 위젯에서 삭제
   const deleteDeviceLayout = useCallback(async (id) => {
     if (!id) return;
+    // 대기 중인 flush가 삭제 후에 발화해 데이터를 복원하지 않도록 취소
+    timers.current.forEach((timer) => clearTimeout(timer));
+    timers.current.clear();
+    pending.current.clear();
     const jobs = [];
     widgetsRef.current.forEach((w) => {
       const L = w.content?.layouts;
