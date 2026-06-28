@@ -1,16 +1,28 @@
-import { useContext } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { WidgetChromeContext } from './WidgetFrame.jsx';
 
 /**
  * 보드 위에 놓는 "뷰 버튼". 보기 모드에서 누르면 저장된 화면으로 이동.
- * 편집/활성 상태: 제목을 바로 입력, 저장된 뷰 선택 / 현재 화면으로 설정.
+ * 편집 모드: 한 번 클릭 → 위젯 선택, 더블클릭 → 제목 편집.
  */
 export default function ViewButtonWidget({ widget, editMode, savedViews = [], onJumpTo, getCurrentRect, onChange }) {
   const { host, selected, editMode: ctxEdit } = useContext(WidgetChromeContext);
   const content = widget.content || {};
   const name = content.name ?? '뷰';
   const rect = content.rect;
+  const [editing, setEditing] = useState(false);
+  const inputRef = useRef(null);
+
+  // 선택 해제되면 편집 모드 종료
+  useEffect(() => {
+    if (!selected) setEditing(false);
+  }, [selected]);
+
+  // editing 진입 시 input 포커스
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
 
   function setHere() {
     onChange({ content: { ...content, rect: getCurrentRect?.() } }, { commit: true });
@@ -37,18 +49,24 @@ export default function ViewButtonWidget({ widget, editMode, savedViews = [], on
   return (
     <div className="w-viewbtn">
       {ctxEdit && selected && host && createPortal(tools, host)}
-      {ctxEdit ? (
+      {ctxEdit && editing ? (
         <input
+          ref={inputRef}
           className="vb-input"
           value={name}
           size={Math.max(2, name.length)}
           placeholder="뷰 이름"
           onPointerDown={(e) => e.stopPropagation()}
           onChange={(e) => onChange({ content: { ...content, name: e.target.value } })}
-          onBlur={() => onChange({ content: { ...content, name: name || '뷰' } }, { commit: true })}
+          onBlur={() => { setEditing(false); onChange({ content: { ...content, name: name || '뷰' } }, { commit: true }); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); }}
         />
       ) : (
-        <button className="vb-main" onClick={() => { if (rect) onJumpTo?.(rect); }}>
+        <button
+          className="vb-main"
+          onDoubleClick={(e) => { if (ctxEdit) { e.stopPropagation(); setEditing(true); } }}
+          onClick={() => { if (!ctxEdit && rect) onJumpTo?.(rect); }}
+        >
           {name || '뷰'}
         </button>
       )}
