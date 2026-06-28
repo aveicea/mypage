@@ -208,7 +208,8 @@ export default function WidgetFrame({
         top: widget.y,
         // 뷰 버튼은 내용(글씨)에 맞게 자동 크기
         ...(isViewbtn ? {} : { width: widget.width, height: widget.height }),
-        zIndex: widget.zIndex,
+        // 선택된 위젯은 stacking context 전체를 맨 위로 올려 툴바 클릭이 막히지 않도록
+        zIndex: (act && selected) ? 99999 : widget.zIndex,
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
