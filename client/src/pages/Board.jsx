@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { resolveConfig, encodeConfig, getDeviceId, getDeviceName, setDeviceName, saveHomeRect, loadHomeRect, loadViews, saveViews, saveViewport, loadViewport } from '../config.js';
+import { resolveConfig, encodeConfig, getDeviceId, getDeviceName, setDeviceName, saveHomeRect, loadViews, saveViews, saveViewport, loadViewport } from '../config.js';
 import { createApi } from '../api.js';
 import { useViewport } from '../canvas/useViewport.js';
 import { useWidgetSync } from '../hooks/useWidgetSync.js';
@@ -87,7 +87,7 @@ export default function Board() {
   const [guides, setGuides] = useState([]); // 이동 시 정렬 가이드
   // 홈 프레임은 항상 "이 기기 화면 = 원점·100%"를 뜻하는 기준틀 (창 크기로 초기화)
   const [homeRect, setHomeRect] = useState(
-    () => loadHomeRect(config.databaseId) || { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight }
+    () => ({ x: 0, y: 0, width: window.innerWidth, height: window.innerHeight })
   );
   const homeRef = useRef(homeRect);
   homeRef.current = homeRect;
@@ -343,8 +343,8 @@ export default function Board() {
   async function handleAdd(type, world) {
     const def = DEFAULTS[type] || DEFAULTS.text;
     const pos = world || viewport.screenToWorld(window.innerWidth / 2, window.innerHeight / 2);
-    // 뷰 버튼은 생성 시 현재 화면을 가리키도록 저장
-    const content = type === 'viewbtn' ? { name: '뷰', rect: captureRect() } : def.content;
+    // 뷰 버튼은 생성 시 현재 화면 + 기기 ID 저장 (기기별로만 표시)
+    const content = type === 'viewbtn' ? { name: '뷰', rect: captureRect(), deviceId } : def.content;
     const widget = {
       type,
       name: `${type}-${Date.now()}`,
@@ -421,7 +421,9 @@ export default function Board() {
         onMarquee={marqueeSelect}
         onBackgroundClick={() => { setSelectedIds([]); setActiveWidgetId(null); }}
       >
-        {widgets.map((w) => (
+        {widgets.filter((w) =>
+          w.type !== 'viewbtn' || !w.content?.deviceId || w.content.deviceId === deviceId
+        ).map((w) => (
           <WidgetFrame
             key={w.id}
             widget={w}
