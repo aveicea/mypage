@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { resolveConfig, encodeConfig, getDeviceId, getDeviceName, setDeviceName, saveHomeRect, loadHomeRect, loadViews, saveViews, saveViewport, loadViewport } from '../config.js';
+import { resolveConfig, encodeConfig, getDeviceId, getDeviceName, setDeviceName, saveHomeRect, loadViews, saveViews, saveViewport, loadViewport } from '../config.js';
 import { createApi } from '../api.js';
 import { useViewport } from '../canvas/useViewport.js';
 import { useWidgetSync } from '../hooks/useWidgetSync.js';
@@ -87,7 +87,7 @@ export default function Board() {
   const [guides, setGuides] = useState([]); // 이동 시 정렬 가이드
   // 홈 프레임은 항상 "이 기기 화면 = 원점·100%"를 뜻하는 기준틀 (창 크기로 초기화)
   const [homeRect, setHomeRect] = useState(
-    () => loadHomeRect(config.databaseId) || { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight }
+    () => ({ x: 0, y: 0, width: window.innerWidth, height: window.innerHeight })
   );
   const homeRef = useRef(homeRect);
   homeRef.current = homeRect;
