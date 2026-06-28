@@ -16,7 +16,7 @@ import ViewButtonWidget from '../widgets/ViewButtonWidget.jsx';
 import {
   PencilIcon, LockClosedIcon, LockOpenIcon, GearIcon,
   PlusIcon, MinusIcon, ResetIcon, LayersIcon, MonitorIcon,
-  UndoIcon, RedoIcon,
+  UndoIcon, RedoIcon, BookmarkIcon,
 } from '../widgets/icons.jsx';
 
 const TYPE_LABEL = {
@@ -97,6 +97,7 @@ export default function Board() {
   const [activeView, setActiveView] = useState(null); // 칩으로 띄운 편집용 뷰 프레임
   const [autoEditId, setAutoEditId] = useState(null); // 추가 직후 자동 편집할 위젯
   const [activeWidgetId, setActiveWidgetId] = useState(null); // 기본 모드에서 임시 편집 활성 위젯
+  const [viewsBarVisible, setViewsBarVisible] = useState(true); // 뷰 바 표시 여부 (보기 모드 전용)
   const [orderPanel, setOrderPanel] = useState(false); // 위젯 순서 사이드바
   const [devicePanel, setDevicePanel] = useState(false); // 기기/위치 관리 패널
   const dragOrderId = useRef(null);
@@ -595,7 +596,7 @@ export default function Board() {
       )}
 
       {/* 상단 중앙: 저장된 뷰(북마크) */}
-      {(views.length > 0 || editMode) && (
+      {(editMode || (viewsBarVisible && views.length > 0)) && (
         <div className="views-bar">
           {views.map((v) => (
             <span key={v.id} className={`view-chip ${activeView === v.id ? 'active' : ''}`}>
@@ -624,6 +625,19 @@ export default function Board() {
           {editMode && (
             <button className="view-add" title="현재 화면을 뷰로 저장" onClick={addView}>+ 뷰 저장</button>
           )}
+        </div>
+      )}
+
+      {/* 우상단: 뷰 바 토글 (보기 모드에서만) */}
+      {!editMode && views.length > 0 && (
+        <div className="top-right">
+          <button
+            className={`icon-btn ${viewsBarVisible ? 'active' : ''}`}
+            title={viewsBarVisible ? '뷰 바 숨기기' : '뷰 바 보이기'}
+            onClick={() => setViewsBarVisible((v) => !v)}
+          >
+            <BookmarkIcon />
+          </button>
         </div>
       )}
 
