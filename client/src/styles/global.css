@@ -711,7 +711,9 @@ button {
   border: 4px solid rgba(0, 0, 0, 0.4);
   box-sizing: border-box;
   pointer-events: none; /* 내부는 통과, 탭/핸들만 잡힘 */
-  z-index: 0;
+  /* 위젯들(작은 z-index) 위에 떠서 이동 탭/핸들을 항상 잡을 수 있게.
+     본체는 pointer-events:none 이라 위젯 조작은 막지 않는다. */
+  z-index: 90000;
   border-radius: 4px;
 }
 .home-frame--light {
