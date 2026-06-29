@@ -56,13 +56,17 @@ router.post('/create-db', wrap(async (req, res) => {
       title: [{ type: 'text', text: { content: '위젯 보드' } }],
       properties: {
         Name:    { title: {} },
-        type:    { rich_text: {} },
+        // type 은 widgetToProperties/pageToWidget 가 select 로 읽고 쓴다.
+        // (rich_text 로 만들면 위젯 생성 시 Notion 이 타입 불일치로 400 거부)
+        type:    { select: {} },
         x:       { number: {} },
         y:       { number: {} },
         width:   { number: {} },
         height:  { number: {} },
         zIndex:  { number: {} },
         content: { rich_text: {} },
+        // 이미지/파일 위젯이 첨부를 저장할 Files 속성 (이름 'Image' → 스키마가 image 로 매핑)
+        Image:   { files: {} },
       },
     },
   });
