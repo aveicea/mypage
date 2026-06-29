@@ -899,6 +899,31 @@ video.w-media-el { object-fit: contain; background: #000; }
   border: none;
   display: block;
 }
+.w-embed--active {
+  outline: 2px solid var(--accent, #4c8bf5);
+  outline-offset: -2px;
+}
+/* 터치 기기에서만: iframe 비활성일 때 "탭하여 조작" 안내 (마우스는 hover 로 깨우므로 숨김) */
+.embed-tap-hint {
+  display: none;
+}
+@media (hover: none) and (pointer: coarse) {
+  .embed-tap-hint {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    z-index: 2;
+    display: block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    user-select: none;
+  }
+}
 .embed-tools {
   display: flex;
   gap: 2px;

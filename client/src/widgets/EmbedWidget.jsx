@@ -46,6 +46,22 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   });
+
+  // 편집 모드로 들어가면 (드래그/이동 위해) iframe 비활성으로 되돌린다.
+  useEffect(() => {
+    if (editMode) setIframeActive(false);
+  }, [editMode]);
+
+  // iframe 이 활성화된 동안: 위젯 바깥(보드 배경 등)을 탭/클릭하면 다시 비활성으로.
+  // (iframe 내부 탭은 별도 문서라 부모로 버블되지 않으므로 활성 상태가 유지된다)
+  useEffect(() => {
+    if (!iframeActive) return;
+    const onDocDown = (e) => {
+      if (!containerRef.current?.contains(e.target)) setIframeActive(false);
+    };
+    document.addEventListener('pointerdown', onDocDown, true);
+    return () => document.removeEventListener('pointerdown', onDocDown, true);
+  }, [iframeActive]);
   // 확대 배율은 기기별로 저장 (없으면 공통 zoom, 그래도 없으면 1)
   const zoom = content.zooms?.[deviceId] ?? content.zoom ?? 1;
 
@@ -103,6 +119,7 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
         }
       : { width: '100%', height: '100%' };
 
+  // 마우스: 0.4초 hover 로 활성화. (hover 가 끝나면 자동 비활성)
   function onMouseEnter() {
     if (editMode) return;
     hoverTimer.current = setTimeout(() => setIframeActive(true), HOVER_DELAY);
@@ -111,17 +128,30 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
     clearTimeout(hoverTimer.current);
     setIframeActive(false);
   }
+  // 터치/펜: hover 가 없으므로 한 번 탭하면 활성화 (바깥 탭 시 위 effect 가 해제).
+  function onPointerDown(e) {
+    if (editMode || e.pointerType === 'mouse') return;
+    if (!iframeActive) setIframeActive(true);
+  }
 
   return (
     <div
       ref={containerRef}
-      className="w-embed"
+      className={`w-embed${iframeActive ? ' w-embed--active' : ''}`}
       onDoubleClick={() => editMode && setUrl()}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onPointerDown={onPointerDown}
     >
       {ctxEdit && selected && host && createPortal(tools, host)}
+      {!editMode && !iframeActive && (
+        <div className="embed-tap-hint" aria-hidden="true">탭하여 조작</div>
+      )}
       <iframe
+        // URL 이 바뀌면 새 element 로 교체해 확실히 새로 로드한다.
+        // (iframe 내부에서 이미 다른 페이지로 이동한 경우, src 속성만 바꾸면
+        //  브라우저가 새로 로드하지 않을 수 있어 "링크 변경이 반영 안 됨" 발생)
+        key={toEmbedUrl(url)}
         src={toEmbedUrl(url)}
         title={widget.id}
         style={{
