@@ -148,6 +148,10 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
         <div className="embed-tap-hint" aria-hidden="true">탭하여 조작</div>
       )}
       <iframe
+        // URL 이 바뀌면 새 element 로 교체해 확실히 새로 로드한다.
+        // (iframe 내부에서 이미 다른 페이지로 이동한 경우, src 속성만 바꾸면
+        //  브라우저가 새로 로드하지 않을 수 있어 "링크 변경이 반영 안 됨" 발생)
+        key={toEmbedUrl(url)}
         src={toEmbedUrl(url)}
         title={widget.id}
         style={{
