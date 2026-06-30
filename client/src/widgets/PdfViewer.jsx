@@ -270,7 +270,7 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
   const goToNode = useCallback((node) => {
     if (node.dest) goToDest(node.dest);
     else if (node.pos) scrollToPos(node.pos.page, node.pos.y, node.pos.pageHeight);
-    setTocOpen(false);
+    // 패널은 사용자가 손잡이로 닫을 때까지 유지 (항목 클릭으로 닫지 않음)
   }, [goToDest, scrollToPos]);
 
   function toggleCollapse(key) {
