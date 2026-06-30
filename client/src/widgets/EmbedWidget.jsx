@@ -38,6 +38,8 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
     if (!el) return;
     const onWheel = (e) => {
       if (!e.ctrlKey) return;
+      // 위젯 zoom 변경은 편집 모드에서만. 보기 모드에서는 임베드가 멋대로 확대되지 않도록 둔다.
+      if (!editMode) return;
       e.preventDefault();
       // deltaY > 0 → 축소, < 0 → 확대
       const factor = 1 - e.deltaY * 0.01;
@@ -137,7 +139,7 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
   return (
     <div
       ref={containerRef}
-      className={`w-embed${iframeActive ? ' w-embed--active' : ''}`}
+      className="w-embed"
       onDoubleClick={() => editMode && setUrl()}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
