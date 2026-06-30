@@ -869,32 +869,26 @@ video.w-media-el { object-fit: contain; background: #000; }
   inset: 0;
   pointer-events: none;
 }
-/* 우측 바깥 목차 토글 화살표 */
+/* 우측 바깥 목차 손잡이 (화살표 없이 반투명 회색 pill) */
 .pdf-toc-toggle {
   position: absolute;
-  right: -26px;
+  right: -13px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 10001;
-  width: 26px;
-  height: 60px;
-  border: 1px solid var(--border);
-  border-left: none;
-  border-radius: 0 10px 10px 0;
-  background: rgba(255, 255, 255, 0.97);
-  color: var(--text);
-  font-size: 20px;
-  line-height: 1;
+  width: 9px;
+  height: 56px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(120, 120, 128, 0.28);
   cursor: pointer;
   padding: 0;
-  box-shadow: var(--shadow);
   pointer-events: auto;
+  transition: background 0.15s ease, height 0.15s ease;
 }
-.pdf-toc-toggle.open {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
+.pdf-toc-toggle:hover { background: rgba(120, 120, 128, 0.5); height: 64px; }
+.pdf-toc-toggle.open { background: rgba(59, 130, 246, 0.55); }
+.pdf-toc-toggle.open:hover { background: rgba(59, 130, 246, 0.7); }
 /* 우측 바깥으로 펼쳐지는 목차 패널 */
 .pdf-toc-panel {
   position: absolute;
@@ -950,15 +944,17 @@ video.w-media-el { object-fit: contain; background: #000; }
 }
 .pdf-toc-caret {
   flex: none;
-  width: 18px;
-  height: 22px;
+  width: 22px;
+  height: 24px;
   border: none;
   background: transparent;
-  color: var(--muted);
+  color: var(--text);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 14px;
+  line-height: 1;
   padding: 0;
 }
+.pdf-toc-caret:hover { color: var(--accent); }
 .pdf-toc-caret--leaf { cursor: default; }
 .pdf-toc-title {
   flex: 1;

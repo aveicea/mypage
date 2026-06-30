@@ -394,11 +394,10 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
           <button
             className={`pdf-toc-toggle ${tocOpen ? 'open' : ''}`}
             title={tocOpen ? '목차 닫기' : '목차 열기'}
+            aria-label={tocOpen ? '목차 닫기' : '목차 열기'}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setTocOpen((v) => !v); }}
-          >
-            {tocOpen ? '◀' : '▶'}
-          </button>
+          />
           {tocOpen && (
             <div className="pdf-toc-panel" onPointerDown={(e) => e.stopPropagation()}>
               <div className="pdf-toc-head">
