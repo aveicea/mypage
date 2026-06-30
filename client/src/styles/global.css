@@ -875,12 +875,13 @@ video.w-media-el { object-fit: contain; background: #000; }
   pointer-events: none;
   z-index: 0;
   --toc-w: min(280px, 60vw); /* 목차 패널 폭 (손잡이 위치 계산에 공유) */
+  --toc-gap: 14px;           /* 페이지와 목차 패널 사이 간격 */
 }
 /* 목차 손잡이: 페이지 가장자리 뒤에 살짝 걸치고 둥근 반타원만 삐져나옴 */
 .pdf-toc-toggle {
   position: absolute;
   right: -7px;
-  top: 50%;
+  top: 25%;
   transform: translateY(-50%);
   z-index: 1;
   width: 16px;
@@ -895,12 +896,12 @@ video.w-media-el { object-fit: contain; background: #000; }
 }
 .pdf-toc-toggle:hover { background: rgba(120, 120, 128, 0.65); height: 72px; }
 /* 열리면 손잡이가 목차 패널 바깥쪽 끝으로 이동 */
-.pdf-toc-toggle.open { right: calc(-7px - var(--toc-w)); background: rgba(59, 130, 246, 0.6); }
+.pdf-toc-toggle.open { right: calc(-7px - var(--toc-gap) - var(--toc-w)); background: rgba(59, 130, 246, 0.6); }
 .pdf-toc-toggle.open:hover { background: rgba(59, 130, 246, 0.7); }
 /* 우측 바깥으로 펼쳐지는 목차 패널 */
 .pdf-toc-panel {
   position: absolute;
-  left: 100%;     /* 위젯 오른쪽 가장자리에 딱 붙어 바깥으로 */
+  left: calc(100% + var(--toc-gap)); /* 페이지에서 살짝 띄워 옆으로 */
   top: 0;
   bottom: 0;
   width: var(--toc-w);
