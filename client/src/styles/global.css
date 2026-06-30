@@ -948,6 +948,12 @@ video.w-media-el { object-fit: contain; background: #000; }
   white-space: nowrap;
 }
 .pdf-toc-title:hover { background: var(--accent-soft); color: var(--accent); }
+.pdf-toc-empty {
+  padding: 14px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
 
 .w-card {
   display: flex;

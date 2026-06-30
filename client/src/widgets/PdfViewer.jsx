@@ -8,6 +8,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 const PAGE_SCALE = 1.5;
 const PAGE_GAP = 8;
+const MAX_TOC_PAGES = 1000; // 자동 목차 분석 시 스캔할 최대 페이지
 
 /**
  * PDF.js 기반 PDF 뷰어.
@@ -15,7 +16,8 @@ const PAGE_GAP = 8;
  * - IntersectionObserver로 현재 페이지 추적
  * - 페이지를 lazy 렌더링해 초기 로드 속도 향상
  * - savedPage로 마지막 위치 복원
- * - 문서 내장 목차(아웃라인)를 옆 패널로 표시: 토글로 접고/펴고, 클릭하면 해당 위치로 이동
+ * - 목차 패널: 문서 내장 아웃라인이 있으면 그대로, 없으면 글자 크기로 헤더를 추정해 구성.
+ *   토글로 접고/펴고, 클릭하면 해당 위치로 이동.
  */
 function useDebounced(fn, delay) {
   const timer = useRef(null);
@@ -25,21 +27,111 @@ function useDebounced(fn, delay) {
   }, [fn, delay]);
 }
 
+/** 내장 아웃라인 → 통일 트리 ({ title, dest, children }) */
+function mapOutline(items) {
+  return items.map((it) => ({
+    title: it.title || '(제목 없음)',
+    dest: it.dest,
+    children: it.items && it.items.length ? mapOutline(it.items) : [],
+  }));
+}
+
+/**
+ * 글자 크기로 헤더를 추정해 목차 트리를 만든다.
+ * - 각 페이지 텍스트를 같은 줄(y)끼리 묶어 줄별 최대 글자 크기 계산
+ * - 가장 흔한 크기 = 본문, 그보다 충분히 큰 줄 = 헤더 후보
+ * - 매 페이지 반복되는 줄(머리말/꼬리말)은 제외
+ * - 헤더 크기를 큰 순으로 레벨화해 계층 구성, 위치(page, y)로 이동
+ */
+async function buildHeadingsToc(doc) {
+  const pageCount = Math.min(doc.numPages, MAX_TOC_PAGES);
+  const lines = [];
+  const sizeCount = new Map();
+  const round = (s) => Math.round(s * 2) / 2;
+
+  for (let p = 1; p <= pageCount; p++) {
+    const page = await doc.getPage(p);
+    const vp = page.getViewport({ scale: 1 });
+    const tc = await page.getTextContent();
+    const byLine = new Map(); // 라운딩한 y → 줄 정보
+    for (const it of tc.items) {
+      if (!it.str || !it.str.trim()) continue;
+      const tr = it.transform || [1, 0, 0, 1, 0, 0];
+      const size = it.height || Math.hypot(tr[2], tr[3]) || Math.abs(tr[3]) || 0;
+      const yKey = Math.round(tr[5]);
+      const cur = byLine.get(yKey) || { y: tr[5], size: 0, parts: [] };
+      cur.size = Math.max(cur.size, size);
+      cur.parts.push([tr[4], it.str]);
+      byLine.set(yKey, cur);
+    }
+    for (const ln of byLine.values()) {
+      const text = ln.parts.sort((a, b) => a[0] - b[0]).map((x) => x[1]).join('').replace(/\s+/g, ' ').trim();
+      if (!text) continue;
+      sizeCount.set(round(ln.size), (sizeCount.get(round(ln.size)) || 0) + 1);
+      lines.push({ page: p, y: ln.y, size: ln.size, text, pageHeight: vp.height });
+    }
+  }
+  if (!lines.length) return null;
+
+  // 본문 크기 = 가장 흔한 줄 크기
+  let bodySize = 0, bestCount = -1;
+  for (const [s, c] of sizeCount) if (c > bestCount) { bestCount = c; bodySize = s; }
+
+  // 머리말/꼬리말 제거: 같은 텍스트가 여러 페이지에 반복되면 제외
+  const pagesByText = new Map();
+  for (const l of lines) {
+    const set = pagesByText.get(l.text) || new Set();
+    set.add(l.page);
+    pagesByText.set(l.text, set);
+  }
+
+  const heads = lines.filter((l) =>
+    l.size >= bodySize * 1.18 &&            // 본문보다 충분히 큼
+    l.text.length >= 2 && l.text.length <= 90 && // 너무 짧거나 문단처럼 긴 줄 제외
+    (pagesByText.get(l.text)?.size || 0) <= 3    // 반복되는 머리말/꼬리말 제외
+  );
+  if (!heads.length) return null;
+
+  // 헤더 크기를 큰 순으로 레벨화 (상위 4단계까지)
+  const sizes = [...new Set(heads.map((h) => round(h.size)))].sort((a, b) => b - a).slice(0, 4);
+  const levelOf = (s) => {
+    const i = sizes.indexOf(round(s));
+    return i < 0 ? sizes.length - 1 : i;
+  };
+
+  // 문서 순서: 페이지 오름차순, 같은 페이지 안에서는 위(y 큰 값)부터
+  heads.sort((a, b) => a.page - b.page || b.y - a.y);
+
+  const rootNodes = [];
+  const stack = []; // { level, node }
+  for (const h of heads) {
+    const node = { title: h.text, pos: { page: h.page, y: h.y, pageHeight: h.pageHeight }, children: [] };
+    const level = levelOf(h.size);
+    while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
+    (stack.length ? stack[stack.length - 1].node.children : rootNodes).push(node);
+    stack.push({ level, node });
+  }
+  return rootNodes;
+}
+
 export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
   const debouncedPageChange = useDebounced(onPageChange || (() => {}), 30000);
   const containerRef = useRef(null);
   const [pdf, setPdf] = useState(null);
   const [numPages, setNumPages] = useState(0);
   const [error, setError] = useState(null);
-  const [outline, setOutline] = useState(null);   // 문서 목차 트리 (없으면 null)
-  const [tocOpen, setTocOpen] = useState(false);   // 목차 패널 열림 여부
-  const [collapsed, setCollapsed] = useState(() => new Set()); // 접힌 목차 항목 키
-  const [pageAspect, setPageAspect] = useState(null); // width/height (lazy 렌더 전 높이 확보용)
+  const [toc, setToc] = useState(null);          // 통일 트리 (null=아직, []=없음)
+  const [tocSource, setTocSource] = useState(null); // 'outline' | 'auto'
+  const [tocLoading, setTocLoading] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const [pageAspect, setPageAspect] = useState(null); // width/height
   const canvasRefs = useRef([]);
   const rendered = useRef(new Set());
   const renderQueue = useRef([]);
   const rendering = useRef(false);
   const restoredRef = useRef(false);
+  const autoTried = useRef(false);
 
   // PDF 로드
   useEffect(() => {
@@ -48,13 +140,16 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
     setError(null);
     setPdf(null);
     setNumPages(0);
-    setOutline(null);
+    setToc(null);
+    setTocSource(null);
+    setTocLoading(false);
     setTocOpen(false);
     setCollapsed(new Set());
     setPageAspect(null);
     rendered.current.clear();
     renderQueue.current = [];
     restoredRef.current = false;
+    autoTried.current = false;
 
     pdfjsLib.getDocument({ url: src, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist/cmaps/', cMapPacked: true })
       .promise
@@ -62,8 +157,12 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
         if (cancelled) return;
         setPdf(doc);
         setNumPages(doc.numPages);
-        // 목차(아웃라인) — 문서가 내장한 헤더 기반 북마크 트리
-        doc.getOutline().then((o) => { if (!cancelled) setOutline(o && o.length ? o : null); }).catch(() => {});
+        // 내장 목차(아웃라인)가 있으면 우선 사용
+        doc.getOutline().then((o) => {
+          if (cancelled || !o || !o.length) return;
+          setToc(mapOutline(o));
+          setTocSource('outline');
+        }).catch(() => {});
         // 1페이지 비율 → 모든 페이지 칸 높이 확보 (렌더 전에도 레이아웃 안정 → 점프 정확)
         doc.getPage(1).then((p) => {
           if (cancelled) return;
@@ -77,6 +176,20 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
 
     return () => { cancelled = true; };
   }, [src]);
+
+  // 목차 패널을 처음 열 때, 내장 목차가 없으면 글자 크기로 추정 (비용이 커서 지연 실행)
+  useEffect(() => {
+    if (!tocOpen || !pdf || autoTried.current || tocSource === 'outline') return;
+    if (toc && toc.length) return;
+    autoTried.current = true;
+    setTocLoading(true);
+    let cancelled = false;
+    buildHeadingsToc(pdf)
+      .then((tree) => { if (!cancelled) { setToc(tree || []); setTocSource('auto'); } })
+      .catch(() => { if (!cancelled) setToc([]); })
+      .finally(() => { if (!cancelled) setTocLoading(false); });
+    return () => { cancelled = true; };
+  }, [tocOpen, pdf, toc, tocSource]);
 
   // 단일 페이지 렌더링 (canvas에 그리기)
   const renderPage = useCallback(async (pageNum, doc) => {
@@ -112,7 +225,22 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
     flushQueue(doc);
   }, [flushQueue]);
 
-  // 목차 항목의 dest → 페이지로 스크롤 이동
+  // 페이지 + 페이지 내 y 위치로 스크롤 (자동 목차용)
+  const scrollToPos = useCallback((pageNum, y, pageHeight) => {
+    enqueue(pageNum, pdf);
+    const container = containerRef.current;
+    const apply = () => {
+      const target = canvasRefs.current[pageNum - 1];
+      if (!target || !container) return;
+      const h = target.clientHeight || 0;
+      const off = (pageHeight && y != null) ? (pageHeight - y) * (h / pageHeight) : 0;
+      container.scrollTop = target.offsetTop + Math.max(0, off - 8);
+    };
+    apply();
+    setTimeout(apply, 350); // lazy 렌더로 위쪽 높이가 바뀌면 보정
+  }, [pdf, enqueue]);
+
+  // 내장 아웃라인 dest → 페이지로 이동
   const goToDest = useCallback(async (dest) => {
     if (!dest || !pdf) return;
     try {
@@ -120,19 +248,15 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
       if (typeof dest === 'string') explicit = await pdf.getDestination(dest);
       if (!Array.isArray(explicit) || !explicit[0]) return;
       const pageIndex = await pdf.getPageIndex(explicit[0]);
-      const pageNum = pageIndex + 1;
-      enqueue(pageNum, pdf); // 대상 페이지 렌더 예약
-      const container = containerRef.current;
-      const scrollToPage = () => {
-        const target = canvasRefs.current[pageNum - 1];
-        if (target && container) container.scrollTop = target.offsetTop;
-      };
-      scrollToPage();
-      // lazy 렌더로 위쪽 페이지 높이가 바뀌면 위치가 어긋날 수 있어 한 번 더 보정
-      setTimeout(scrollToPage, 350);
-      setTocOpen(false); // 이동 후 패널을 닫아 대상이 가려지지 않게
-    } catch { /* 이동 실패는 조용히 무시 */ }
-  }, [pdf, enqueue]);
+      scrollToPos(pageIndex + 1, null, null);
+    } catch { /* 무시 */ }
+  }, [pdf, scrollToPos]);
+
+  const goToNode = useCallback((node) => {
+    if (node.dest) goToDest(node.dest);
+    else if (node.pos) scrollToPos(node.pos.page, node.pos.y, node.pos.pageHeight);
+    setTocOpen(false);
+  }, [goToDest, scrollToPos]);
 
   function toggleCollapse(key) {
     setCollapsed((prev) => {
@@ -152,7 +276,6 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
         if (entry.isIntersecting) {
           const n = parseInt(entry.target.dataset.page, 10);
           enqueue(n, pdf);
-          // 가장 위에 보이는 페이지를 현재 페이지로 추적
           if (!topEntry || entry.boundingClientRect.top < topEntry.boundingClientRect.top) {
             topEntry = entry;
           }
@@ -173,12 +296,9 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
     restoredRef.current = true;
     const page = Math.max(1, Math.min(savedPage, numPages));
     if (page <= 1) return;
-    // 렌더 전이라 canvas 크기가 0일 수 있으므로 약간 대기
     const t = setTimeout(() => {
       const target = canvasRefs.current[page - 1];
       const container = containerRef.current;
-      // scrollIntoView는 상위 컨테이너(보드 캔버스/창)까지 끌고 가므로
-      // PDF 스크롤 컨테이너 내부에서만 offsetTop으로 직접 이동
       if (target && container) container.scrollTop = target.offsetTop;
     }, 300);
     return () => clearTimeout(t);
@@ -201,7 +321,7 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
   const renderItems = (items, depth, prefix) =>
     items.map((it, i) => {
       const key = prefix ? `${prefix}-${i}` : `${i}`;
-      const hasKids = it.items && it.items.length > 0;
+      const hasKids = it.children && it.children.length > 0;
       const isCollapsed = collapsed.has(key);
       return (
         <div key={key} className="pdf-toc-item">
@@ -220,12 +340,12 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
             <button
               className="pdf-toc-title"
               title={it.title}
-              onClick={(e) => { e.stopPropagation(); goToDest(it.dest); }}
+              onClick={(e) => { e.stopPropagation(); goToNode(it); }}
             >
-              {it.title || '(제목 없음)'}
+              {it.title}
             </button>
           </div>
-          {hasKids && !isCollapsed && renderItems(it.items, depth + 1, key)}
+          {hasKids && !isCollapsed && renderItems(it.children, depth + 1, key)}
         </div>
       );
     });
@@ -252,27 +372,29 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
         ))}
       </div>
 
-      {/* 목차가 있을 때만: 가장자리 화살표 + 슬라이드 패널 */}
-      {outline && (
-        <>
-          <button
-            className={`pdf-toc-toggle ${tocOpen ? 'open' : ''}`}
-            title={tocOpen ? '목차 닫기' : '목차'}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); setTocOpen((v) => !v); }}
-          >
-            {tocOpen ? '◂' : '▸'}
-          </button>
-          {tocOpen && (
-            <div
-              className="pdf-toc-panel"
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <div className="pdf-toc-head">목차</div>
-              <div className="pdf-toc-list">{renderItems(outline, 0, '')}</div>
-            </div>
-          )}
-        </>
+      <button
+        className={`pdf-toc-toggle ${tocOpen ? 'open' : ''}`}
+        title={tocOpen ? '목차 닫기' : '목차'}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); setTocOpen((v) => !v); }}
+      >
+        {tocOpen ? '◂' : '▸'}
+      </button>
+      {tocOpen && (
+        <div className="pdf-toc-panel" onPointerDown={(e) => e.stopPropagation()}>
+          <div className="pdf-toc-head">
+            목차{tocSource === 'auto' ? ' (자동)' : ''}
+          </div>
+          <div className="pdf-toc-list">
+            {tocLoading ? (
+              <div className="pdf-toc-empty">목차 분석 중…</div>
+            ) : toc && toc.length ? (
+              renderItems(toc, 0, '')
+            ) : (
+              <div className="pdf-toc-empty">목차를 찾지 못했어요</div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
