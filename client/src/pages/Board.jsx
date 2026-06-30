@@ -678,7 +678,8 @@ export default function Board() {
           onClick={() => {
             const entering = !editMode;
             setEditMode(entering);
-            if (entering) setLocked(false); // 편집 진입 시 자물쇠 자동 해제
+            // 편집 진입 시 자물쇠 자동 해제, 보기로 나가면 다시 잠금
+            setLocked(!entering);
             setSelectedId(null);
             setMenuOpen(false);
             setActiveView(null);

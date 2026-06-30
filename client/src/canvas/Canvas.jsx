@@ -25,9 +25,8 @@ export default function Canvas({
   const { pan, zoom, zoomAt, panBy, screenToWorld } = viewport;
   const rootRef = useRef(null);
   const panning = useRef(null);
-  const pointers = useRef(new Map()); // pointerId -> {x,y} (핀치용)
-  const pinch = useRef(null); // { dist, cx, cy }
   const marquee = useRef(null); // 편집 모드 드래그 박스 선택
+  const pinching = useRef(false); // 두 손가락 핀치 중 (패닝 억제용)
   const wheelGesture = useRef({ start: 0, last: 0, body: null }); // 위젯 스크롤 1초 지연용
   const [marqueeRect, setMarqueeRect] = useState(null); // 화면 좌표 오버레이
   const [grabbing, setGrabbing] = useState(false);
@@ -120,9 +119,47 @@ export default function Canvas({
     return () => el.removeEventListener('wheel', onWheel);
   }, [zoomAt, panBy, editMode, panEnabled, zoomEnabled]);
 
-  function dist(a, b) {
-    return Math.hypot(a.x - b.x, a.y - b.y);
-  }
+  // 두 손가락 핀치 줌 (터치). 위젯 위에서도 동작하도록 pointer 이벤트가 아닌
+  // touch 이벤트로 루트에서 직접 처리한다 (위젯이 pointer 이벤트 전파를 막아도 잡힘).
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || !zoomEnabled) return;
+    let last = 0; // 직전 두 손가락 거리
+    const onStart = (e) => {
+      if (e.touches.length !== 2) return;
+      const [a, b] = e.touches;
+      last = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      pinching.current = true;
+      panning.current = null;
+      marquee.current = null;
+      setMarqueeRect(null);
+      setGrabbing(false);
+    };
+    const onMove = (e) => {
+      if (!pinching.current || e.touches.length < 2) return;
+      e.preventDefault();
+      const [a, b] = e.touches;
+      const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const rect = el.getBoundingClientRect();
+      const cx = (a.clientX + b.clientX) / 2 - rect.left;
+      const cy = (a.clientY + b.clientY) / 2 - rect.top;
+      if (last > 0) zoomAt(cx, cy, d / last);
+      last = d;
+    };
+    const onEnd = (e) => {
+      if (e.touches.length < 2) { pinching.current = false; last = 0; }
+    };
+    el.addEventListener('touchstart', onStart, { passive: false });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd);
+    el.addEventListener('touchcancel', onEnd);
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
+    };
+  }, [zoomEnabled, zoomAt]);
 
   function isBackground(e) {
     return e.target === rootRef.current || e.target.classList.contains('canvas-layer');
@@ -138,19 +175,8 @@ export default function Canvas({
     }
     if (e.pointerType === 'mouse' && e.button !== 0) return; // 좌클릭만
 
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    if (pointers.current.size === 2 && zoomEnabled) {
-      // 두 손가락 → 핀치 줌 (편집 모드에서만), 패닝/마퀴 중단
-      e.currentTarget.setPointerCapture(e.pointerId);
-      panning.current = null;
-      marquee.current = null;
-      setMarqueeRect(null);
-      const [a, b] = [...pointers.current.values()];
-      pinch.current = { dist: dist(a, b), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
-      setGrabbing(false);
-      return;
-    }
+    // 두 손가락 핀치는 touch 이벤트 핸들러(위)에서 처리. 진행 중이면 패닝/마퀴 시작 안 함.
+    if (pinching.current) return;
 
     if (editMode && e.pointerType === 'mouse') {
       // 편집 모드 + 마우스: 배경 드래그 = 드래그 박스 선택
@@ -175,23 +201,8 @@ export default function Canvas({
   }
 
   function onPointerMove(e) {
-    if (pointers.current.has(e.pointerId)) {
-      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    } else if (!panning.current && !marquee.current) {
-      return;
-    }
-
-    // 핀치 줌
-    if (pinch.current && pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()];
-      const d = dist(a, b);
-      const rect = rootRef.current.getBoundingClientRect();
-      const cx = (a.x + b.x) / 2 - rect.left;
-      const cy = (a.y + b.y) / 2 - rect.top;
-      if (pinch.current.dist > 0) zoomAt(cx, cy, d / pinch.current.dist);
-      pinch.current.dist = d;
-      return;
-    }
+    if (pinching.current) return; // 핀치 중에는 패닝/마퀴 무시
+    if (!panning.current && !marquee.current) return;
 
     // 드래그 박스 선택
     if (marquee.current) {
@@ -219,9 +230,6 @@ export default function Canvas({
   }
 
   function onPointerUp(e) {
-    pointers.current.delete(e.pointerId);
-    if (pointers.current.size < 2) pinch.current = null;
-
     if (marquee.current) {
       const m = marquee.current;
       marquee.current = null;
