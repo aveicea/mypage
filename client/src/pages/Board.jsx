@@ -468,7 +468,7 @@ export default function Board() {
           <button className="icon-btn" title="확대" onClick={() => viewport.zoomAt(innerWidth / 2, innerHeight / 2, 1.1)}>
             <PlusIcon />
           </button>
-          <button className="icon-btn" title="리셋" onClick={() => viewport.fitTo(homeRect)}>
+          <button className="icon-btn" title="확대 100%로" onClick={() => viewport.resetZoom()}>
             <ResetIcon />
           </button>
         </div>
@@ -606,10 +606,14 @@ export default function Board() {
             <span key={v.id} className={`view-chip ${activeView === v.id ? 'active' : ''}`}>
               <button
                 className="view-go"
-                title={editMode ? '클릭: 영역 표시/이동' : v.name}
+                title={editMode ? '클릭: 그 위치로 이동 (영역 표시)' : v.name}
                 onClick={() => {
-                  if (editMode) setActiveView((cur) => (cur === v.id ? null : v.id));
-                  else viewport.fitTo(v.rect);
+                  if (editMode) {
+                    viewport.panToRect(v.rect); // 확대 유지, 그 위치로 이동
+                    setActiveView((cur) => (cur === v.id ? null : v.id));
+                  } else {
+                    viewport.fitTo(v.rect);
+                  }
                 }}
               >
                 {v.name}

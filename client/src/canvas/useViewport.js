@@ -63,5 +63,23 @@ export function useViewport() {
     });
   }, []);
 
-  return { pan, zoom, screenToWorld, zoomAt, panBy, reset, fitTo, setViewport, MIN_ZOOM, MAX_ZOOM };
+  /** 확대는 그대로 두고, 주어진 영역(rect)의 중심으로 패닝만 한다 */
+  const panToRect = useCallback((rect) => {
+    if (!rect) return;
+    const { zoom: z } = stateRef.current;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const cx = rect.x + (rect.width || 0) / 2;
+    const cy = rect.y + (rect.height || 0) / 2;
+    setPan({ x: vw / 2 - cx * z, y: vh / 2 - cy * z });
+  }, []);
+
+  /** 위치는 그대로 두고 확대만 100%(1배)로 되돌린다 (화면 중심 기준) */
+  const resetZoom = useCallback(() => {
+    const { zoom: z } = stateRef.current;
+    if (z === 1) return;
+    zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1 / z);
+  }, [zoomAt]);
+
+  return { pan, zoom, screenToWorld, zoomAt, panBy, reset, fitTo, setViewport, panToRect, resetZoom, MIN_ZOOM, MAX_ZOOM };
 }
