@@ -94,6 +94,9 @@ export default function WidgetFrame({
   const drag = useRef(null);
   const [extHost, setExtHost] = useState(null);
   const hostRef = useCallback((node) => setExtHost(node), []);
+  // 위젯 테두리 바깥(클리핑 영향 없는 영역)에 도구를 띄우기 위한 호스트 (예: PDF 목차)
+  const [sideHost, setSideHost] = useState(null);
+  const sideHostRef = useCallback((node) => setSideHost(node), []);
   const [paletteOpen, setPaletteOpen] = useState(false); // 색상 팔레트 펼침 여부
   const act = interactive ?? editMode; // 편집 모드이거나, 이 위젯만 임시 편집 활성
 
@@ -222,7 +225,7 @@ export default function WidgetFrame({
         />
       )}
       <div className="widget-body">
-        <WidgetChromeContext.Provider value={{ host: extHost, selected, editMode: act }}>
+        <WidgetChromeContext.Provider value={{ host: extHost, sideHost, selected, editMode: act }}>
           {children}
         </WidgetChromeContext.Provider>
       </div>
@@ -290,6 +293,9 @@ export default function WidgetFrame({
         {/* 위젯별 도구(임베드 %, 그림 도구 등)가 포털로 들어오는 자리 — 항상 존재 */}
         <span className="wt-ext" ref={hostRef} />
       </div>
+
+      {/* 위젯 테두리 바깥(클리핑 영향 없음)에 뜨는 도구용 호스트 — 예: PDF 목차 */}
+      <span className="widget-side" ref={sideHostRef} />
 
       {act && selected && !isViewbtn &&
         ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((dir) => (

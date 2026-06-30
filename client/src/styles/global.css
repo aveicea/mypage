@@ -125,6 +125,7 @@ button {
 
 .widget-body {
   position: relative;
+  z-index: 1; /* 사이드 호스트(.widget-side) 위에 그려져 손잡이가 페이지 뒤로 가게 */
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -853,9 +854,139 @@ video.w-media-el { object-fit: contain; background: #000; }
 .widget.edit .w-media > video,
 .widget.edit .w-media > .w-audio,
 .widget.edit .w-media > iframe,
-.widget.edit .w-media > .pdf-scroll,
+.widget.edit .w-media > .pdf-viewer,
 .widget.edit .w-media > .w-file {
   pointer-events: none;
+}
+
+/* PDF 뷰어 래퍼 (스크롤 영역) — 위젯을 꽉 채워 가장자리에 페이지가 딱 붙게 */
+.pdf-viewer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* 스크롤바 거터로 보드 배경이 비쳐 목차와 사이가 떠 보이지 않도록 흰 배경 */
+  background: #fff;
+}
+/* 위젯 테두리 바깥에 도구를 띄우는 호스트.
+   z-index 0 으로 두어 위젯 본문(페이지)보다 아래 → 손잡이가 페이지 뒤에서 삐져나오게 */
+.widget-side {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  --toc-w: min(280px, 60vw); /* 목차 패널 폭 (손잡이 위치 계산에 공유) */
+  --toc-gap: 3px;            /* 페이지와 목차 패널 사이 간격 */
+}
+/* 목차 손잡이: 페이지 가장자리 뒤에 살짝 걸치고 둥근 반타원만 삐져나옴 */
+.pdf-toc-toggle {
+  position: absolute;
+  right: -7px;
+  top: 25%;
+  transform: translateY(-50%);
+  z-index: 1;
+  width: 16px;
+  height: 60px;
+  border: none;
+  border-radius: 0 16px 16px 0 / 0 30px 30px 0; /* 오른쪽만 둥근 반타원 */
+  background: rgba(120, 120, 128, 0.45);
+  cursor: pointer;
+  padding: 0;
+  pointer-events: auto;
+  transition: background 0.15s ease, height 0.15s ease, right 0.18s ease;
+}
+.pdf-toc-toggle:hover { background: rgba(120, 120, 128, 0.65); height: 72px; }
+/* 열리면 손잡이가 목차 패널 바깥쪽 끝으로 이동 */
+.pdf-toc-toggle.open { right: calc(-7px - var(--toc-gap) - var(--toc-w)); background: rgba(59, 130, 246, 0.6); }
+.pdf-toc-toggle.open:hover { background: rgba(59, 130, 246, 0.7); }
+/* 우측 바깥으로 펼쳐지는 목차 패널 */
+.pdf-toc-panel {
+  position: absolute;
+  left: calc(100% + var(--toc-gap)); /* 페이지에서 살짝 띄워 옆으로 */
+  top: 0;
+  bottom: 0;
+  width: var(--toc-w);
+  z-index: 10000;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 4px 0 14px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: auto;
+}
+.pdf-toc-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 7px 8px 7px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.pdf-toc-title-label { font-weight: 600; color: var(--muted); }
+.pdf-toc-actions { display: flex; gap: 4px; }
+.pdf-toc-actions button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.pdf-toc-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.pdf-toc-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0 8px;
+}
+.pdf-toc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  padding-right: 6px;
+}
+.pdf-toc-caret {
+  flex: none;
+  width: 22px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+.pdf-toc-caret:hover { color: var(--accent); }
+.pdf-toc-caret--leaf { cursor: default; }
+.pdf-toc-title {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.35;
+  cursor: pointer;
+  padding: 3px 2px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdf-toc-title:hover { background: var(--accent-soft); color: var(--accent); }
+.pdf-toc-empty {
+  padding: 14px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
 }
 
 .w-card {
@@ -900,27 +1031,6 @@ video.w-media-el { object-fit: contain; background: #000; }
 .w-embed iframe {
   border: none;
   display: block;
-}
-/* 터치 기기에서만: iframe 비활성일 때 "탭하여 조작" 안내 (마우스는 hover 로 깨우므로 숨김) */
-.embed-tap-hint {
-  display: none;
-}
-@media (hover: none) and (pointer: coarse) {
-  .embed-tap-hint {
-    position: absolute;
-    bottom: 6px;
-    right: 6px;
-    z-index: 2;
-    display: block;
-    padding: 3px 8px;
-    border-radius: 999px;
-    font-size: 11px;
-    line-height: 1.4;
-    color: #fff;
-    background: rgba(0, 0, 0, 0.55);
-    pointer-events: none;
-    user-select: none;
-  }
 }
 .embed-tools {
   display: flex;
