@@ -57,12 +57,9 @@ function collectParentKeys(items, prefix, out) {
  * - 매 페이지 반복되는 줄(머리말/꼬리말)은 제외
  * - 헤더 크기를 큰 순으로 레벨화해 계층 구성, 위치(page, y)로 이동
  */
-async function buildHeadingsToc(doc) {
+async function scanLines(doc) {
   const pageCount = Math.min(doc.numPages, MAX_TOC_PAGES);
   const lines = [];
-  const sizeCount = new Map();
-  const round = (s) => Math.round(s * 2) / 2;
-
   for (let p = 1; p <= pageCount; p++) {
     const page = await doc.getPage(p);
     const vp = page.getViewport({ scale: 1 });
@@ -81,11 +78,18 @@ async function buildHeadingsToc(doc) {
     for (const ln of byLine.values()) {
       const text = ln.parts.sort((a, b) => a[0] - b[0]).map((x) => x[1]).join('').replace(/\s+/g, ' ').trim();
       if (!text) continue;
-      sizeCount.set(round(ln.size), (sizeCount.get(round(ln.size)) || 0) + 1);
       lines.push({ page: p, y: ln.y, size: ln.size, text, pageHeight: vp.height });
     }
   }
+  return lines;
+}
+
+/** scanLines 결과(줄 목록)에서 글자 크기로 헤더를 추정해 목차 트리를 만든다. */
+function buildHeadingsTocFromLines(lines) {
   if (!lines.length) return null;
+  const round = (s) => Math.round(s * 2) / 2;
+  const sizeCount = new Map();
+  for (const l of lines) sizeCount.set(round(l.size), (sizeCount.get(round(l.size)) || 0) + 1);
 
   // 본문 크기 = 가장 흔한 줄 크기
   let bodySize = 0, bestCount = -1;
@@ -141,12 +145,16 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
   const [tocOpen, setTocOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [pageAspect, setPageAspect] = useState(null); // width/height
+  const [query, setQuery] = useState('');          // PDF 내 검색어
+  const [results, setResults] = useState(null);    // 검색 결과 (null=검색 안 함)
+  const [searching, setSearching] = useState(false);
   const canvasRefs = useRef([]);
   const rendered = useRef(new Set());
   const renderQueue = useRef([]);
   const rendering = useRef(false);
   const restoredRef = useRef(false);
   const autoTried = useRef(false);
+  const linesRef = useRef(null); // scanLines 캐시 (목차 추정/검색 공용)
 
   // PDF 로드
   useEffect(() => {
@@ -161,10 +169,14 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
     setTocOpen(false);
     setCollapsed(new Set());
     setPageAspect(null);
+    setQuery('');
+    setResults(null);
+    setSearching(false);
     rendered.current.clear();
     renderQueue.current = [];
     restoredRef.current = false;
     autoTried.current = false;
+    linesRef.current = null;
 
     pdfjsLib.getDocument({ url: src, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist/cmaps/', cMapPacked: true })
       .promise
@@ -192,6 +204,15 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
     return () => { cancelled = true; };
   }, [src]);
 
+  // 페이지 텍스트를 한 번만 스캔해 캐시 (목차 추정/검색 공용)
+  const ensureLines = useCallback(async () => {
+    if (linesRef.current) return linesRef.current;
+    if (!pdf) return [];
+    const lines = await scanLines(pdf);
+    linesRef.current = lines;
+    return lines;
+  }, [pdf]);
+
   // 목차 패널을 처음 열 때, 내장 목차가 없으면 글자 크기로 추정 (비용이 커서 지연 실행)
   useEffect(() => {
     if (!tocOpen || !pdf || autoTried.current || tocSource === 'outline') return;
@@ -199,12 +220,36 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
     autoTried.current = true;
     setTocLoading(true);
     let cancelled = false;
-    buildHeadingsToc(pdf)
-      .then((tree) => { if (!cancelled) { setToc(tree || []); setTocSource('auto'); } })
+    ensureLines()
+      .then((lines) => { if (!cancelled) { setToc(buildHeadingsTocFromLines(lines) || []); setTocSource('auto'); } })
       .catch(() => { if (!cancelled) setToc([]); })
       .finally(() => { if (!cancelled) setTocLoading(false); });
     return () => { cancelled = true; };
-  }, [tocOpen, pdf, toc, tocSource]);
+  }, [tocOpen, pdf, toc, tocSource, ensureLines]);
+
+  // PDF 내 검색: 검색어가 있으면 줄 목록에서 매칭을 찾아 결과로 표시
+  useEffect(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) { setResults(null); setSearching(false); return; }
+    let cancelled = false;
+    setSearching(true);
+    ensureLines()
+      .then((lines) => {
+        if (cancelled) return;
+        const out = [];
+        for (const l of lines) {
+          const idx = l.text.toLowerCase().indexOf(q);
+          if (idx >= 0) {
+            out.push({ page: l.page, y: l.y, pageHeight: l.pageHeight, text: l.text, idx, len: q.length });
+            if (out.length >= 300) break;
+          }
+        }
+        setResults(out);
+      })
+      .catch(() => { if (!cancelled) setResults([]); })
+      .finally(() => { if (!cancelled) setSearching(false); });
+    return () => { cancelled = true; };
+  }, [query, ensureLines]);
 
   // 단일 페이지 렌더링 (canvas에 그리기)
   const renderPage = useCallback(async (pageNum, doc) => {
@@ -402,15 +447,55 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
             <div className="pdf-toc-panel" onPointerDown={(e) => e.stopPropagation()}>
               <div className="pdf-toc-head">
                 <span className="pdf-toc-title-label">목차</span>
-                {toc && toc.length > 0 && (
+                <div className="pdf-toc-search">
+                  <input
+                    className="pdf-toc-search-input"
+                    value={query}
+                    placeholder="PDF 검색"
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                  {query && (
+                    <button
+                      className="pdf-toc-search-x"
+                      title="검색 지우기"
+                      onClick={(e) => { e.stopPropagation(); setQuery(''); }}
+                    >×</button>
+                  )}
+                </div>
+                {!query && toc && toc.length > 0 && (
                   <span className="pdf-toc-actions">
-                    <button onClick={(e) => { e.stopPropagation(); expandAll(); }}>전체 열기</button>
-                    <button onClick={(e) => { e.stopPropagation(); collapseAll(); }}>전체 닫기</button>
+                    <button onClick={(e) => { e.stopPropagation(); expandAll(); }}>열기</button>
+                    <button onClick={(e) => { e.stopPropagation(); collapseAll(); }}>닫기</button>
                   </span>
                 )}
               </div>
               <div className="pdf-toc-list">
-                {tocLoading ? (
+                {query ? (
+                  searching ? (
+                    <div className="pdf-toc-empty">검색 중…</div>
+                  ) : results && results.length ? (
+                    results.map((r, i) => {
+                      const start = Math.max(0, r.idx - 24);
+                      return (
+                        <button
+                          key={i}
+                          className="pdf-search-row"
+                          onClick={(e) => { e.stopPropagation(); scrollToPos(r.page, r.y, r.pageHeight); }}
+                        >
+                          <span className="pdf-search-page">p.{r.page}</span>
+                          <span className="pdf-search-snippet">
+                            {start > 0 ? '…' : ''}{r.text.slice(start, r.idx)}
+                            <mark>{r.text.slice(r.idx, r.idx + r.len)}</mark>
+                            {r.text.slice(r.idx + r.len, r.idx + r.len + 60)}
+                            {r.text.length > r.idx + r.len + 60 ? '…' : ''}
+                          </span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="pdf-toc-empty">검색 결과 없음</div>
+                  )
+                ) : tocLoading ? (
                   <div className="pdf-toc-empty">목차 분석 중…</div>
                 ) : toc && toc.length ? (
                   renderItems(toc, 0, '')
