@@ -868,6 +868,7 @@ video.w-media-el { object-fit: contain; background: #000; }
   position: absolute;
   inset: 0;
   pointer-events: none;
+  --toc-w: min(280px, 60vw); /* 목차 패널 폭 (손잡이 위치 계산에 공유) */
 }
 /* 우측 바깥 목차 손잡이 (화살표 없이 반투명 회색 pill) */
 .pdf-toc-toggle {
@@ -884,19 +885,19 @@ video.w-media-el { object-fit: contain; background: #000; }
   cursor: pointer;
   padding: 0;
   pointer-events: auto;
-  transition: background 0.15s ease, height 0.15s ease;
+  transition: background 0.15s ease, height 0.15s ease, right 0.18s ease;
 }
 .pdf-toc-toggle:hover { background: rgba(120, 120, 128, 0.5); height: 64px; }
-.pdf-toc-toggle.open { background: rgba(59, 130, 246, 0.55); }
+/* 열리면 손잡이가 목차 패널 바깥(오른쪽)으로 이동 */
+.pdf-toc-toggle.open { right: calc(-13px - var(--toc-w)); background: rgba(59, 130, 246, 0.55); }
 .pdf-toc-toggle.open:hover { background: rgba(59, 130, 246, 0.7); }
 /* 우측 바깥으로 펼쳐지는 목차 패널 */
 .pdf-toc-panel {
   position: absolute;
   left: 100%;
-  margin-left: 26px;
   top: 0;
   bottom: 0;
-  width: min(280px, 60vw);
+  width: var(--toc-w);
   z-index: 10000;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid var(--border);
