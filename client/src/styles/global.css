@@ -875,7 +875,7 @@ video.w-media-el { object-fit: contain; background: #000; }
   pointer-events: none;
   z-index: 0;
   --toc-w: min(280px, 60vw); /* 목차 패널 폭 (손잡이 위치 계산에 공유) */
-  --toc-gap: 14px;           /* 페이지와 목차 패널 사이 간격 */
+  --toc-gap: 0px;            /* 페이지와 목차 패널 사이 간격 (0 = 딱 붙게) */
 }
 /* 목차 손잡이: 페이지 가장자리 뒤에 살짝 걸치고 둥근 반타원만 삐져나옴 */
 .pdf-toc-toggle {
