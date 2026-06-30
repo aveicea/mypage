@@ -100,13 +100,37 @@ export default function WidgetFrame({
   const [paletteOpen, setPaletteOpen] = useState(false); // 색상 팔레트 펼침 여부
   const act = interactive ?? editMode; // 편집 모드이거나, 이 위젯만 임시 편집 활성
 
+  // 보기 모드 터치: 한 번 탭해야 내용 활성화 (임베드는 자체 처리, 뷰 버튼은 즉시 이동)
+  const gateable = widget.type !== 'embed' && widget.type !== 'viewbtn';
+  const [vActive, setVActive] = useState(false);
+  const inert = gateable && !act && !vActive; // 미활성 → 내용 비활성(터치 기기)
+
   // 선택 해제되면 팔레트 접기
   useEffect(() => {
     if (!selected) setPaletteOpen(false);
   }, [selected]);
 
+  // 편집 모드 진입 시 보기-활성 해제
+  useEffect(() => {
+    if (editMode) setVActive(false);
+  }, [editMode]);
+
+  // 활성 중 위젯 바깥을 탭/클릭하면 비활성으로
+  useEffect(() => {
+    if (!vActive) return;
+    const onDoc = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setVActive(false);
+    };
+    document.addEventListener('pointerdown', onDoc, true);
+    return () => document.removeEventListener('pointerdown', onDoc, true);
+  }, [vActive]);
+
   function onPointerDown(e) {
-    if (!act) return;
+    if (!act) {
+      // 보기 모드 터치: 첫 탭으로 활성화 (내용 조작은 그 다음 탭부터)
+      if (inert && e.pointerType !== 'mouse') setVActive(true);
+      return;
+    }
     // 핸들/툴바는 각자 처리
     if (e.target.closest('.widget-resize') || e.target.closest('.widget-toolbar')) return;
     e.stopPropagation(); // 캔버스 패닝 방지
@@ -205,7 +229,7 @@ export default function WidgetFrame({
   return (
     <div
       ref={ref}
-      className={`widget widget--${widget.type} ${act ? 'edit' : ''} ${selected ? 'selected' : ''}`}
+      className={`widget widget--${widget.type} ${act ? 'edit' : ''} ${selected ? 'selected' : ''} ${inert ? 'wv-gate' : ''}`}
       style={{
         left: widget.x,
         top: widget.y,
