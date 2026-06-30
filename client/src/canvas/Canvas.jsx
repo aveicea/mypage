@@ -127,6 +127,9 @@ export default function Canvas({
     let last = 0; // 직전 두 손가락 거리
     const onStart = (e) => {
       if (e.touches.length !== 2) return;
+      // 위젯 위에서 시작한 핀치는 무시 — 배경에서만 보드 확대
+      const onWidget = [...e.touches].some((t) => t.target?.closest?.('.widget'));
+      if (onWidget) return;
       const [a, b] = e.touches;
       last = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
       pinching.current = true;
