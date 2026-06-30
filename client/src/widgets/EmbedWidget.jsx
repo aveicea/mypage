@@ -146,9 +146,6 @@ export default function EmbedWidget({ widget, editMode, deviceId, onChange }) {
       onPointerDown={onPointerDown}
     >
       {ctxEdit && selected && host && createPortal(tools, host)}
-      {!editMode && !iframeActive && (
-        <div className="embed-tap-hint" aria-hidden="true">탭하여 조작</div>
-      )}
       <iframe
         // URL 이 바뀌면 새 element 로 교체해 확실히 새로 로드한다.
         // (iframe 내부에서 이미 다른 페이지로 이동한 경우, src 속성만 바꾸면
