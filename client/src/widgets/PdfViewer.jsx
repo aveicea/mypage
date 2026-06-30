@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import * as pdfjsLib from 'pdfjs-dist';
+import { WidgetChromeContext } from './WidgetFrame.jsx';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -34,6 +36,18 @@ function mapOutline(items) {
     dest: it.dest,
     children: it.items && it.items.length ? mapOutline(it.items) : [],
   }));
+}
+
+/** renderItems 와 같은 key 규칙으로, 자식이 있는(접을 수 있는) 항목의 key 전부 수집 */
+function collectParentKeys(items, prefix, out) {
+  items.forEach((it, i) => {
+    const key = prefix ? `${prefix}-${i}` : `${i}`;
+    if (it.children && it.children.length) {
+      out.push(key);
+      collectParentKeys(it.children, key, out);
+    }
+  });
+  return out;
 }
 
 /**
@@ -115,6 +129,7 @@ async function buildHeadingsToc(doc) {
 }
 
 export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
+  const { sideHost } = useContext(WidgetChromeContext);
   const debouncedPageChange = useDebounced(onPageChange || (() => {}), 30000);
   const containerRef = useRef(null);
   const [pdf, setPdf] = useState(null);
@@ -265,6 +280,8 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
       return next;
     });
   }
+  const expandAll = () => setCollapsed(new Set());
+  const collapseAll = () => setCollapsed(new Set(collectParentKeys(toc || [], '', [])));
 
   // IntersectionObserver: 보이는 페이지 렌더 + 현재 페이지 추적
   useEffect(() => {
@@ -372,29 +389,40 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
         ))}
       </div>
 
-      <button
-        className={`pdf-toc-toggle ${tocOpen ? 'open' : ''}`}
-        title={tocOpen ? '목차 닫기' : '목차'}
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); setTocOpen((v) => !v); }}
-      >
-        {tocOpen ? '◂' : '▸'}
-      </button>
-      {tocOpen && (
-        <div className="pdf-toc-panel" onPointerDown={(e) => e.stopPropagation()}>
-          <div className="pdf-toc-head">
-            목차{tocSource === 'auto' ? ' (자동)' : ''}
-          </div>
-          <div className="pdf-toc-list">
-            {tocLoading ? (
-              <div className="pdf-toc-empty">목차 분석 중…</div>
-            ) : toc && toc.length ? (
-              renderItems(toc, 0, '')
-            ) : (
-              <div className="pdf-toc-empty">목차를 찾지 못했어요</div>
-            )}
-          </div>
-        </div>
+      {sideHost && createPortal(
+        <>
+          <button
+            className={`pdf-toc-toggle ${tocOpen ? 'open' : ''}`}
+            title={tocOpen ? '목차 닫기' : '목차 열기'}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); setTocOpen((v) => !v); }}
+          >
+            {tocOpen ? '◀' : '▶'}
+          </button>
+          {tocOpen && (
+            <div className="pdf-toc-panel" onPointerDown={(e) => e.stopPropagation()}>
+              <div className="pdf-toc-head">
+                <span className="pdf-toc-title-label">목차</span>
+                {toc && toc.length > 0 && (
+                  <span className="pdf-toc-actions">
+                    <button onClick={(e) => { e.stopPropagation(); expandAll(); }}>전체 열기</button>
+                    <button onClick={(e) => { e.stopPropagation(); collapseAll(); }}>전체 닫기</button>
+                  </span>
+                )}
+              </div>
+              <div className="pdf-toc-list">
+                {tocLoading ? (
+                  <div className="pdf-toc-empty">목차 분석 중…</div>
+                ) : toc && toc.length ? (
+                  renderItems(toc, 0, '')
+                ) : (
+                  <div className="pdf-toc-empty">목차를 찾지 못했어요</div>
+                )}
+              </div>
+            </div>
+          )}
+        </>,
+        sideHost
       )}
     </div>
   );
