@@ -901,10 +901,6 @@ video.w-media-el { object-fit: contain; background: #000; }
   border: none;
   display: block;
 }
-.w-embed--active {
-  outline: 2px solid var(--accent, #4c8bf5);
-  outline-offset: -2px;
-}
 /* 터치 기기에서만: iframe 비활성일 때 "탭하여 조작" 안내 (마우스는 hover 로 깨우므로 숨김) */
 .embed-tap-hint {
   display: none;
