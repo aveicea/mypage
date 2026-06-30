@@ -853,10 +853,101 @@ video.w-media-el { object-fit: contain; background: #000; }
 .widget.edit .w-media > video,
 .widget.edit .w-media > .w-audio,
 .widget.edit .w-media > iframe,
-.widget.edit .w-media > .pdf-scroll,
+.widget.edit .w-media > .pdf-viewer,
 .widget.edit .w-media > .w-file {
   pointer-events: none;
 }
+
+/* PDF 뷰어 래퍼 (스크롤 영역 + 목차 오버레이) */
+.pdf-viewer {
+  position: relative;
+  height: 100%;
+}
+/* 좌측 가장자리 목차 토글 화살표 */
+.pdf-toc-toggle {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 18px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: var(--shadow);
+}
+.pdf-toc-toggle.open { left: min(72%, 260px); }
+/* 슬라이드 목차 패널 */
+.pdf-toc-panel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(72%, 260px);
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.98);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.pdf-toc-head {
+  flex: none;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.pdf-toc-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0 8px;
+}
+.pdf-toc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  padding-right: 6px;
+}
+.pdf-toc-caret {
+  flex: none;
+  width: 18px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+}
+.pdf-toc-caret--leaf { cursor: default; }
+.pdf-toc-title {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.35;
+  cursor: pointer;
+  padding: 3px 2px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdf-toc-title:hover { background: var(--accent-soft); color: var(--accent); }
 
 .w-card {
   display: flex;
