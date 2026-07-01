@@ -926,14 +926,42 @@ video.w-media-el { object-fit: contain; background: #000; }
   flex: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 6px;
   padding: 7px 8px 7px 10px;
   font-size: 12px;
   border-bottom: 1px solid var(--border);
 }
-.pdf-toc-title-label { font-weight: 600; color: var(--muted); }
-.pdf-toc-actions { display: flex; gap: 4px; }
+.pdf-toc-title-label { flex: none; font-weight: 600; color: var(--muted); }
+/* 검색창 (목차 글씨와 버튼 사이) */
+.pdf-toc-search { flex: 1; min-width: 0; position: relative; display: flex; }
+.pdf-toc-search-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-size: 12px;
+  padding: 3px 20px 3px 8px;
+  outline: none;
+}
+.pdf-toc-search-input:focus { border-color: var(--accent); }
+.pdf-toc-search-x {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.pdf-toc-search-x:hover { color: var(--text); }
+.pdf-toc-actions { flex: none; display: flex; gap: 4px; }
 .pdf-toc-actions button {
   border: 1px solid var(--border);
   background: transparent;
@@ -994,6 +1022,32 @@ video.w-media-el { object-fit: contain; background: #000; }
   color: var(--muted);
   text-align: center;
 }
+/* 검색 결과 행 */
+.pdf-search-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.pdf-search-row:hover { background: var(--accent-soft); }
+.pdf-search-page { flex: none; color: var(--muted); font-size: 11px; padding-top: 1px; }
+.pdf-search-snippet {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pdf-search-snippet mark { background: #fde68a; color: inherit; border-radius: 2px; }
 
 .w-card {
   display: flex;
