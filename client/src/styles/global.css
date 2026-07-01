@@ -100,11 +100,9 @@ button {
   outline-offset: 2px;
 }
 
-/* 보기 모드 터치 기기: 위젯을 한 번 탭해 활성화하기 전에는 내용 조작 비활성
-   (마우스 환경은 그대로 동작 — 임베드의 탭 활성화와 동일한 UX) */
-@media (hover: none) and (pointer: coarse) {
-  .widget.wv-gate .widget-body { pointer-events: none; }
-}
+/* 보기 모드 손가락 터치: 위젯을 한 번 탭해 활성화하기 전에는 내용 조작 비활성.
+   .wv-gate 부여 여부는 JS(실제 터치 입력 감지)가 결정 — 트랙패드/마우스는 제외. */
+.widget.wv-gate .widget-body { pointer-events: none; }
 
 /* 편집 모드에서 선택 안 된 위젯은 잡을 수 있게 옅은 외곽선 */
 .widget.edit:not(.selected) {

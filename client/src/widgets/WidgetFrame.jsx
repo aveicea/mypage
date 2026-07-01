@@ -75,6 +75,32 @@ function snapResize(nx, ny, nw, nh, dir, others, thr) {
   return { nx, ny, nw, nh, guides };
 }
 
+// 마지막 입력이 "손가락 터치"였는지 전역 추적.
+// (iPad 에 트랙패드를 연결하면 터치 기기로 인식되지만, 트랙패드/마우스 사용 중에는
+//  탭 활성화 게이팅을 걸지 않아 스크롤 등이 정상 동작하도록 한다.)
+let touchInput = false;
+const touchSubs = new Set();
+function setTouchInput(v) {
+  if (v === touchInput) return;
+  touchInput = v;
+  touchSubs.forEach((fn) => fn(v));
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('touchstart', () => setTouchInput(true), { capture: true, passive: true });
+  window.addEventListener('mousemove', () => setTouchInput(false), { capture: true, passive: true });
+  window.addEventListener('wheel', () => setTouchInput(false), { capture: true, passive: true });
+}
+function useTouchInput() {
+  const [v, setV] = useState(touchInput);
+  useEffect(() => {
+    const fn = (nv) => setV(nv);
+    touchSubs.add(fn);
+    setV(touchInput);
+    return () => { touchSubs.delete(fn); };
+  }, []);
+  return v;
+}
+
 export default function WidgetFrame({
   widget,
   zoom,
@@ -103,7 +129,9 @@ export default function WidgetFrame({
   // 보기 모드 터치: 한 번 탭해야 내용 활성화 (임베드는 자체 처리, 뷰 버튼은 즉시 이동)
   const gateable = widget.type !== 'embed' && widget.type !== 'viewbtn';
   const [vActive, setVActive] = useState(false);
-  const inert = gateable && !act && !vActive; // 미활성 → 내용 비활성(터치 기기)
+  const touchInput = useTouchInput();
+  // 손가락 터치 입력일 때만 게이팅 (트랙패드/마우스는 바로 조작·스크롤 가능)
+  const inert = gateable && !act && !vActive && touchInput;
   const [wantTop, setWantTop] = useState(false); // 자식(예: PDF 목차)이 최상단을 요청
 
   // 선택 해제되면 팔레트 접기
@@ -129,7 +157,7 @@ export default function WidgetFrame({
   function onPointerDown(e) {
     if (!act) {
       // 보기 모드 터치: 첫 탭으로 활성화 (내용 조작은 그 다음 탭부터)
-      if (inert && e.pointerType !== 'mouse') setVActive(true);
+      if (inert) setVActive(true);
       return;
     }
     // 핸들/툴바는 각자 처리
