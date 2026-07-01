@@ -451,7 +451,7 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
                   <input
                     className="pdf-toc-search-input"
                     value={query}
-                    placeholder="PDF 검색"
+                    placeholder="🔍"
                     onChange={(e) => setQuery(e.target.value)}
                   />
                   {query && (
