@@ -72,11 +72,21 @@ async function scanLines(doc) {
       const yKey = Math.round(tr[5]);
       const cur = byLine.get(yKey) || { y: tr[5], size: 0, parts: [] };
       cur.size = Math.max(cur.size, size);
-      cur.parts.push([tr[4], it.str]);
+      cur.parts.push([tr[4], it.str, it.width || 0]);
       byLine.set(yKey, cur);
     }
     for (const ln of byLine.values()) {
-      const text = ln.parts.sort((a, b) => a[0] - b[0]).map((x) => x[1]).join('').replace(/\s+/g, ' ').trim();
+      // 조각들을 x 순으로 잇되, 가로 간격이 있으면 공백을 넣는다 (PDF 는 공백 문자가 없을 때가 많음)
+      const parts = ln.parts.sort((a, b) => a[0] - b[0]);
+      const gapThresh = Math.max(1, ln.size * 0.2);
+      let text = '';
+      let prevEnd = null;
+      for (const [x, str, w] of parts) {
+        if (prevEnd !== null && x - prevEnd > gapThresh) text += ' ';
+        text += str;
+        prevEnd = x + w;
+      }
+      text = text.replace(/\s+/g, ' ').trim();
       if (!text) continue;
       lines.push({ page: p, y: ln.y, size: ln.size, text, pageHeight: vp.height });
     }
@@ -133,7 +143,7 @@ function buildHeadingsTocFromLines(lines) {
 }
 
 export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
-  const { sideHost } = useContext(WidgetChromeContext);
+  const { sideHost, raise } = useContext(WidgetChromeContext);
   const debouncedPageChange = useDebounced(onPageChange || (() => {}), 30000);
   const containerRef = useRef(null);
   const [pdf, setPdf] = useState(null);
@@ -250,6 +260,12 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
       .finally(() => { if (!cancelled) setSearching(false); });
     return () => { cancelled = true; };
   }, [query, ensureLines]);
+
+  // 목차가 열려 있으면 이 위젯을 다른 위젯보다 최상단으로 올린다
+  useEffect(() => {
+    raise?.(tocOpen);
+    return () => raise?.(false);
+  }, [tocOpen, raise]);
 
   // 단일 페이지 렌더링 (canvas에 그리기)
   const renderPage = useCallback(async (pageNum, doc) => {
@@ -451,7 +467,7 @@ export default function PdfViewer({ src, savedPage = 1, onPageChange }) {
                   <input
                     className="pdf-toc-search-input"
                     value={query}
-                    placeholder="PDF 검색"
+                    placeholder="🔍"
                     onChange={(e) => setQuery(e.target.value)}
                   />
                   {query && (

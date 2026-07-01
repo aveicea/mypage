@@ -104,6 +104,7 @@ export default function WidgetFrame({
   const gateable = widget.type !== 'embed' && widget.type !== 'viewbtn';
   const [vActive, setVActive] = useState(false);
   const inert = gateable && !act && !vActive; // 미활성 → 내용 비활성(터치 기기)
+  const [wantTop, setWantTop] = useState(false); // 자식(예: PDF 목차)이 최상단을 요청
 
   // 선택 해제되면 팔레트 접기
   useEffect(() => {
@@ -235,8 +236,8 @@ export default function WidgetFrame({
         top: widget.y,
         // 뷰 버튼은 내용(글씨)에 맞게 자동 크기
         ...(isViewbtn ? {} : { width: widget.width, height: widget.height }),
-        // 선택된 위젯은 stacking context 전체를 맨 위로 올려 툴바 클릭이 막히지 않도록
-        zIndex: (act && selected) ? 99999 : widget.zIndex,
+        // 선택된 위젯은 stacking context 전체를 맨 위로. 자식이 최상단 요청(목차)하면 그보다 위.
+        zIndex: wantTop ? 100000 : (act && selected) ? 99999 : widget.zIndex,
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -249,7 +250,7 @@ export default function WidgetFrame({
         />
       )}
       <div className="widget-body">
-        <WidgetChromeContext.Provider value={{ host: extHost, sideHost, selected, editMode: act }}>
+        <WidgetChromeContext.Provider value={{ host: extHost, sideHost, selected, editMode: act, raise: setWantTop }}>
           {children}
         </WidgetChromeContext.Provider>
       </div>
